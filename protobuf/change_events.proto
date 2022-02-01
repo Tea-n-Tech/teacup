@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package change_events;
+
+message CpuChangeEvent {
+    float usage = 1;
+}
