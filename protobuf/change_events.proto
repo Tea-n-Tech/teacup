@@ -4,4 +4,30 @@ package change_events;
 
 message CpuChangeEvent {
     float usage = 1;
+    float temp = 2;
 }
+
+message MemoryChangeEvent {
+    uint64 total = 1;
+    uint64 free = 2;
+}
+ 
+message Mount {
+    string device_name = 1;
+    string mount_location = 2;
+    uint64 total = 3;
+    uint64 free = 4;
+    string fs_type = 5;
+}
+
+message NetworkDevice {
+    string name = 1;
+    uint64 bytes_received = 2;
+    uint64 bytes_sent = 3;
+}
+
+message BatteryChangeEvent {
+    uint64 remaining_seconds = 1;
+    float remaining_capacity = 2;
+}
+
