@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "google/protobuf/timestamp.proto";
+
 package change_events;
 
 message CpuChangeEvent {
@@ -29,5 +31,9 @@ message NetworkDevice {
 message BatteryChangeEvent {
     uint64 remaining_seconds = 1;
     float remaining_capacity = 2;
+    bool power_connected = 3;
 }
 
+message SystemInfo {
+    google.protobuf.Timestamp boot_time = 1;
+}

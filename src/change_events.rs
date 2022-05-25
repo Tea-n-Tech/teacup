@@ -40,4 +40,11 @@ pub struct BatteryChangeEvent {
     pub remaining_seconds: u64,
     #[prost(float, tag="2")]
     pub remaining_capacity: f32,
+    #[prost(bool, tag="3")]
+    pub power_connected: bool,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SystemInfo {
+    #[prost(message, optional, tag="1")]
+    pub boot_time: ::core::option::Option<::prost_types::Timestamp>,
 }

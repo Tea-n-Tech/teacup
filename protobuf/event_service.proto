@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package event_service;
+
+enum EventType {
+    ADD = 0;
+    UPDATE = 1;
+    DELETE = 2;
+}
+
+message ChangeEvent {
+    EventType event_type = 1;
+}
+
+message EventReponse {}
+
+service EventService {
+    rpc AddEvent(ChangeEvent) returns (EventReponse) {}
+    rpc UpdateEvent(ChangeEvent) returns (EventReponse) {}
+    rpc DeleteEvent(ChangeEvent) returns (EventReponse) {}
+}
