@@ -140,7 +140,7 @@ pub async fn get_disk_info(sys: &impl Platform) -> Result<Vec<proto::Mount>, std
 pub async fn get_battery_info(
     sys: &impl Platform,
 ) -> Result<proto::BatteryChangeEvent, std::io::Error> {
-    let mut on_ac = true;
+    let on_ac;
     match sys.on_ac_power() {
         Ok(on_ac_power) => on_ac = on_ac_power,
         Err(err) => {
