@@ -1,33 +1,29 @@
-// extern crate prost_build;
-
-// fn main() {
-//     std::env::set_var("OUT_DIR", "src/");
-//     let mut config = prost_build::Config::new();
-//     config.out_dir("src/");
-
-//     prost_build::compile_protos(
-//         &[
-//             "protobuf/change_events.proto",
-//             "protobuf/event_service.proto",
-//         ],
-//         &["protobuf/"],
-//     )
-//     .unwrap();
-// }
+use std::{env, path::PathBuf};
 
 extern crate tonic_build;
 
-fn main() {
+// fn main() {
+//     tonic_build::configure()
+//         .out_dir("src/")
+//         .compile(
+//             &[
+//                 "protobuf/change_events.proto",
+//                 "protobuf/event_service.proto",
+//             ],
+//             &["protobuf/"],
+//         )
+//         .unwrap_or_else(|e| panic!("Failed to compile protos {:?}", e));
+// }
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // let event_service_descriptor_set_path: PathBuf =
+    //     PathBuf::from(env::var("OUT_DIR").unwrap()).join("grpc_monitoring_v1.bin");
     tonic_build::configure()
-        .out_dir("src/")
-        .compile(
-            &[
-                "protobuf/change_events.proto",
-                "protobuf/event_service.proto",
-            ],
-            &["protobuf/"],
-        )
+        // .file_descriptor_set_path(event_service_descriptor_set_path)
+        .build_server(true)
+        // .build_client(true)
+        .compile(&["protobuf/change_events.proto"], &["protobuf"])
         .unwrap_or_else(|e| panic!("Failed to compile protos {:?}", e));
-    // tonic_build::compile_protos("protobuf/change_events.proto")
-    //     .unwrap_or_else(|e| panic!("Failed to compile protos {:?}", e));
+
+    Ok(())
 }

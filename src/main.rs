@@ -1,86 +1,74 @@
 extern crate systemstat;
 extern crate tokio;
 
-mod change_events;
 mod data_collection;
+mod server;
+use tonic::transport::Server;
 
-use change_events::BatteryChangeEvent;
-use change_events::CpuChangeEvent;
-use change_events::MemoryChangeEvent;
-use change_events::Mount;
-use change_events::NetworkDevice;
-use change_events::SystemInfo;
 use data_collection::{
     get_battery_info, get_cpu_info, get_disk_info, get_network_stats, get_ram_info, get_system_info,
 };
-use prost_types::Timestamp;
-use std::net;
-use std::vec;
-use std::{
-    pin::Pin,
-    result,
-    task::{Context, Poll},
-    thread, time,
-};
-use systemstat::DateTime;
-use systemstat::{saturating_sub_bytes, Platform, System};
-use tokio::sync::mpsc;
+use server::MetricService;
+use std::time;
+use systemstat::{Platform, System};
 
-#[tokio::main]
-async fn main() {
-    // let emitter = CpuChangeEmitter {
-    //     last_update_index: 0,
-    //     update_index: 0,
-    //     cpu_usage: 0.0,
-    // };
-    // let mut stream = tokio_stream::iter(vec![3, 4]);
+use crate::server::proto::event_service_server::EventService;
 
-    // let (tx, mut rx) = mpsc::channel::<CpuChangeEvent>(32);
+// #[tokio::main]
+// async fn main() {
+//     // let emitter = CpuChangeEmitter {
+//     //     last_update_index: 0,
+//     //     update_index: 0,
+//     //     cpu_usage: 0.0,
+//     // };
+//     // let mut stream = tokio_stream::iter(vec![3, 4]);
 
-    // let sys = System::new();
-    // tokio::spawn(async move {
-    //     let change_event = get_cpu_info(&sys).await.unwrap();
-    //     let result = tx.send(change_event).await;
-    //     match result {
-    //         Ok(_) => println!("Sent"),
-    //         Err(e) => println!("Error: {}", e),
-    //     }
-    // });
+//     // let (tx, mut rx) = mpsc::channel::<CpuChangeEvent>(32);
 
-    // tokio::spawn(async move {
-    //     // tx2.send("sending from second handle").await;
-    // });
+//     // let sys = System::new();
+//     // tokio::spawn(async move {
+//     //     let change_event = get_cpu_info(&sys).await.unwrap();
+//     //     let result = tx.send(change_event).await;
+//     //     match result {
+//     //         Ok(_) => println!("Sent"),
+//     //         Err(e) => println!("Error: {}", e),
+//     //     }
+//     // });
 
-    // while let Some(message) = rx.recv().await {
-    //     println!("GOT {:?}", message);
-    // }
+//     // tokio::spawn(async move {
+//     //     // tx2.send("sending from second handle").await;
+//     // });
 
-    let sys = &System::new();
-    loop {
-        let change_event = get_cpu_info(sys).await.unwrap();
-        println!("Change Event: {:?}", change_event);
+//     // while let Some(message) = rx.recv().await {
+//     //     println!("GOT {:?}", message);
+//     // }
 
-        let mem_change_event = get_ram_info(sys).await;
-        println!("Change Event: {:?}", mem_change_event);
+//     let sys = &System::new();
+//     loop {
+//         let change_event = get_cpu_info(sys).await.unwrap();
+//         println!("Change Event: {:?}", change_event);
 
-        let mounts = get_disk_info(sys).await;
-        println!("Change Event: {:?}", mounts);
+//         let mem_change_event = get_ram_info(sys).await;
+//         println!("Change Event: {:?}", mem_change_event);
 
-        let battery_change_events = get_battery_info(sys).await;
-        println!("Change Event: {:?}", battery_change_events);
+//         let mounts = get_disk_info(sys).await;
+//         println!("Change Event: {:?}", mounts);
 
-        let network_stats = get_network_stats(sys).await;
-        println!("Change Event: {:?}", network_stats);
+//         let battery_change_events = get_battery_info(sys).await;
+//         println!("Change Event: {:?}", battery_change_events);
 
-        let system_info = get_system_info(sys).await;
-        println!("Change Event: {:?}", system_info);
+//         let network_stats = get_network_stats(sys).await;
+//         println!("Change Event: {:?}", network_stats);
 
-        // sys.block_device_statistics()
-        //     .unwrap()
-        //     .iter()
-        //     .for_each(|d| println!("{}: {:?}", d.0, d.1));
+//         let system_info = get_system_info(sys).await;
+//         println!("Change Event: {:?}", system_info);
 
-        let sleep_duration = time::Duration::from_secs(1);
-        tokio::time::sleep(sleep_duration).await;
-    }
-}
+//         // sys.block_device_statistics()
+//         //     .unwrap()
+//         //     .iter()
+//         //     .for_each(|d| println!("{}: {:?}", d.0, d.1));
+
+//         let sleep_duration = time::Duration::from_secs(1);
+//         tokio::time::sleep(sleep_duration).await;
+//     }
+// }

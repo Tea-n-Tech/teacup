@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
 
 package change_events;
 
@@ -36,4 +37,33 @@ message BatteryChangeEvent {
 
 message SystemInfo {
     google.protobuf.Timestamp boot_time = 1;
+}
+
+enum EventType {
+    ADD = 0;
+    UPDATE = 1;
+    DELETE = 2;
+}
+
+message ChangeEvent {
+    EventType event_type = 1;
+    oneof event {
+        change_events.CpuChangeEvent cpu = 2;
+        change_events.MemoryChangeEvent memory = 3;
+        change_events.Mount mount = 4;
+        change_events.NetworkDevice network_device = 5;
+        change_events.BatteryChangeEvent battery = 6;
+        change_events.SystemInfo system_info = 7;
+    }
+}
+
+message ChangeEventBatch {
+    repeated ChangeEvent events = 1;
+}
+
+service EventService {
+    // rpc AddEvent(ChangeEvent) returns (google.protobuf.Empty);
+    // rpc UpdateEvent(ChangeEvent) returns (google.protobuf.Empty);
+    // rpc DeleteEvent(ChangeEvent) returns (google.protobuf.Empty);
+    rpc SendEvents(ChangeEventBatch) returns (google.protobuf.Empty) {}
 }

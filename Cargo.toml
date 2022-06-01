@@ -3,6 +3,14 @@ name = "teacup"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]] # Bin to run the gRPC server
+name = "server"
+path = "src/server.rs"
+
+[[bin]] # Bin to run the gRPC client
+name = "client"
+path = "src/client.rs"
+
 [dependencies]
 tonic = "0.7"
 prost = "0.10"

@@ -1,16 +1,45 @@
+extern crate systemstat;
 extern crate tokio;
 
 use prost_types::Timestamp;
 use std::time;
 use systemstat::Platform;
+use systemstat::System;
 
-use crate::change_events::{
-    BatteryChangeEvent, CpuChangeEvent, MemoryChangeEvent, Mount, NetworkDevice, SystemInfo,
-};
+pub mod proto {
+    #![allow(unreachable_pub)]
+    #![allow(missing_docs)]
+    tonic::include_proto!("change_events");
+}
 
-pub async fn get_cpu_info(sys: &impl Platform) -> Result<CpuChangeEvent, std::io::Error> {
-    let mut usage: f32 = 0.;
-    let mut temp: f32 = 0.;
+pub async fn collect_events() {
+    let sys = &System::new();
+
+    let change_event = get_cpu_info(sys).await.unwrap();
+    println!("Change Event: {:?}", change_event);
+
+    let mem_change_event = get_ram_info(sys).await;
+    println!("Change Event: {:?}", mem_change_event);
+
+    let mounts = get_disk_info(sys).await;
+    println!("Change Event: {:?}", mounts);
+
+    let battery_change_events = get_battery_info(sys).await;
+    println!("Change Event: {:?}", battery_change_events);
+
+    let network_stats = get_network_stats(sys).await;
+    println!("Change Event: {:?}", network_stats);
+
+    let system_info = get_system_info(sys).await;
+    println!("Change Event: {:?}", system_info);
+
+    let sleep_duration = time::Duration::from_secs(1);
+    tokio::time::sleep(sleep_duration).await;
+}
+
+pub async fn get_cpu_info(sys: &impl Platform) -> Result<proto::CpuChangeEvent, std::io::Error> {
+    let usage: f32;
+    let temp: f32;
 
     match sys.cpu_load_aggregate() {
         Ok(cpu) => {
@@ -53,13 +82,13 @@ pub async fn get_cpu_info(sys: &impl Platform) -> Result<CpuChangeEvent, std::io
         }
     }
 
-    Ok(CpuChangeEvent {
+    Ok(proto::CpuChangeEvent {
         usage: usage,
         temp: temp,
     })
 }
 
-pub async fn get_ram_info(sys: &impl Platform) -> Result<MemoryChangeEvent, std::io::Error> {
+pub async fn get_ram_info(sys: &impl Platform) -> Result<proto::MemoryChangeEvent, std::io::Error> {
     match sys.memory() {
         Ok(mem) => {
             println!("Memory Total: {}, Free: {}", mem.total, mem.free);
@@ -68,7 +97,7 @@ pub async fn get_ram_info(sys: &impl Platform) -> Result<MemoryChangeEvent, std:
             //     .into_iter()
             //     .for_each(|x| println!("{}: {}", x.0, x.1));
 
-            Ok(MemoryChangeEvent {
+            Ok(proto::MemoryChangeEvent {
                 free: mem.free.as_u64(),
                 total: mem.total.as_u64(),
             })
@@ -80,7 +109,7 @@ pub async fn get_ram_info(sys: &impl Platform) -> Result<MemoryChangeEvent, std:
     }
 }
 
-pub async fn get_disk_info(sys: &impl Platform) -> Result<Vec<Mount>, std::io::Error> {
+pub async fn get_disk_info(sys: &impl Platform) -> Result<Vec<proto::Mount>, std::io::Error> {
     match sys.mounts() {
         Ok(mounts) => {
             mounts.iter().for_each(|fs| {
@@ -91,7 +120,7 @@ pub async fn get_disk_info(sys: &impl Platform) -> Result<Vec<Mount>, std::io::E
             });
             let mount_vec = mounts
                 .iter()
-                .map(|fs| Mount {
+                .map(|fs| proto::Mount {
                     device_name: fs.fs_mounted_from.clone(),
                     mount_location: fs.fs_mounted_on.clone(),
                     free: fs.avail.as_u64(),
@@ -108,7 +137,9 @@ pub async fn get_disk_info(sys: &impl Platform) -> Result<Vec<Mount>, std::io::E
     }
 }
 
-pub async fn get_battery_info(sys: &impl Platform) -> Result<BatteryChangeEvent, std::io::Error> {
+pub async fn get_battery_info(
+    sys: &impl Platform,
+) -> Result<proto::BatteryChangeEvent, std::io::Error> {
     let mut on_ac = true;
     match sys.on_ac_power() {
         Ok(on_ac_power) => on_ac = on_ac_power,
@@ -125,7 +156,7 @@ pub async fn get_battery_info(sys: &impl Platform) -> Result<BatteryChangeEvent,
                 battery.remaining_capacity,
                 battery.remaining_time.as_secs() / 60,
             );
-            Ok(BatteryChangeEvent {
+            Ok(proto::BatteryChangeEvent {
                 remaining_capacity: battery.remaining_capacity,
                 remaining_seconds: battery.remaining_time.as_secs(),
                 power_connected: on_ac,
@@ -138,11 +169,11 @@ pub async fn get_battery_info(sys: &impl Platform) -> Result<BatteryChangeEvent,
     }
 }
 
-pub async fn get_system_info(sys: &impl Platform) -> Result<SystemInfo, std::io::Error> {
+pub async fn get_system_info(sys: &impl Platform) -> Result<proto::SystemInfo, std::io::Error> {
     match sys.boot_time() {
         Ok(boot_time) => {
             println!("Boot Time: {}", boot_time);
-            Ok(SystemInfo {
+            Ok(proto::SystemInfo {
                 boot_time: Some(Timestamp {
                     seconds: boot_time.timestamp(),
                     // nanos are a bit too much
@@ -157,7 +188,9 @@ pub async fn get_system_info(sys: &impl Platform) -> Result<SystemInfo, std::io:
     }
 }
 
-pub async fn get_network_stats(sys: &impl Platform) -> Result<Vec<NetworkDevice>, std::io::Error> {
+pub async fn get_network_stats(
+    sys: &impl Platform,
+) -> Result<Vec<proto::NetworkDevice>, std::io::Error> {
     match sys.networks() {
         Ok(networks) => {
             let device_stats = networks
@@ -169,7 +202,7 @@ pub async fn get_network_stats(sys: &impl Platform) -> Result<Vec<NetworkDevice>
                         "{}: sent: {}, recv: {}",
                         name, network.tx_bytes, network.rx_bytes
                     );
-                    NetworkDevice {
+                    proto::NetworkDevice {
                         name: name.clone(),
                         bytes_received: network.rx_bytes.as_u64(),
                         bytes_sent: network.tx_bytes.as_u64(),
