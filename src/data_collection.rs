@@ -2,9 +2,10 @@ extern crate systemstat;
 extern crate tokio;
 
 use prost_types::Timestamp;
-use std::time;
 use systemstat::Platform;
 use systemstat::System;
+use tokio::sync::mpsc;
+use tokio::time;
 
 pub mod proto {
     #![allow(unreachable_pub)]
@@ -12,29 +13,35 @@ pub mod proto {
     tonic::include_proto!("change_events");
 }
 
-pub async fn collect_events() {
-    let sys = &System::new();
+pub async fn collect_events(tx: mpsc::Sender<proto::ChangeEventBatch>) {
+    let forever = tokio::task::spawn(async {
+        let sys = &System::new();
+        // TODO make configurable
+        let mut interval = time::interval(time::Duration::from_secs(5));
+        loop {
+            interval.tick().await;
 
-    let change_event = get_cpu_info(sys).await.unwrap();
-    println!("Change Event: {:?}", change_event);
+            let cpu_change_event = get_cpu_info(sys).await.unwrap();
+            println!("Change Event: {:?}", cpu_change_event);
 
-    let mem_change_event = get_ram_info(sys).await;
-    println!("Change Event: {:?}", mem_change_event);
+            let mem_change_event = get_ram_info(sys).await;
+            println!("Change Event: {:?}", mem_change_event);
 
-    let mounts = get_disk_info(sys).await;
-    println!("Change Event: {:?}", mounts);
+            let mounts = get_disk_info(sys).await;
+            println!("Change Event: {:?}", mounts);
 
-    let battery_change_events = get_battery_info(sys).await;
-    println!("Change Event: {:?}", battery_change_events);
+            // too expensive
+            // let battery_change_events = get_battery_info(sys).await;
+            // println!("Change Event: {:?}", battery_change_events);
 
-    let network_stats = get_network_stats(sys).await;
-    println!("Change Event: {:?}", network_stats);
+            let network_stats = get_network_stats(sys).await;
+            println!("Change Event: {:?}", network_stats);
 
-    let system_info = get_system_info(sys).await;
-    println!("Change Event: {:?}", system_info);
-
-    let sleep_duration = time::Duration::from_secs(1);
-    tokio::time::sleep(sleep_duration).await;
+            let system_info = get_system_info(sys).await;
+            println!("Change Event: {:?}", system_info);
+        }
+    });
+    forever.await;
 }
 
 pub async fn get_cpu_info(sys: &impl Platform) -> Result<proto::CpuChangeEvent, std::io::Error> {
