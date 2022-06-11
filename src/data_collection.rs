@@ -1,11 +1,18 @@
 extern crate systemstat;
 extern crate tokio;
 
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::hash::Hash;
+use std::iter::Map;
+
 use prost_types::Timestamp;
 use systemstat::Platform;
 use systemstat::System;
 use tokio::sync::mpsc;
 use tokio::time;
+
+use self::proto::NetworkDevice;
 
 pub mod proto {
     #![allow(unreachable_pub)]
@@ -13,11 +20,55 @@ pub mod proto {
     tonic::include_proto!("change_events");
 }
 
-pub async fn collect_events(tx: mpsc::Sender<proto::ChangeEventBatch>) {
+impl Eq for proto::NetworkDevice {}
+impl Hash for proto::NetworkDevice {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+    }
+}
+
+pub async fn compare_network_devices(
+    prev_devices: HashMap<String, proto::NetworkDevice>,
+    new_devices: HashMap<String, proto::NetworkDevice>,
+) -> Vec<proto::ChangeEvent> {
+    let events: Vec<proto::ChangeEvent> = Vec::new();
+
+    let mut all_device_names: Vec<&String> = vec![];
+    all_device_names.extend(prev_devices.keys());
+    all_device_names.extend(new_devices.keys());
+
+    for device_name in all_device_names {
+        let prev_device = prev_devices.get(device_name);
+        let new_device = new_devices.get(device_name);
+
+        if prev_device.is_none() && new_device.is_some() {
+            // TODO add
+        }
+
+        if prev_device.is_some() && new_device.is_some() {
+            // TODO update
+        }
+
+        if prev_device.is_some() && new_device.is_none() {
+            // TODO remove
+        }
+    }
+
+    events
+}
+
+pub async fn collect_events(
+    tx: mpsc::Sender<proto::ChangeEventBatch>,
+    initial_state: proto::InitialStateResponse,
+) {
     let forever = tokio::task::spawn(async move {
         let sys = &System::new();
         // TODO make configurable
         let mut interval = time::interval(time::Duration::from_secs(5));
+
+        let mut previous_mounts = initial_state.mounts;
+        let mut previous_network_devices = initial_state.network_devices;
+
         loop {
             interval.tick().await;
 
@@ -49,6 +100,7 @@ pub async fn collect_events(tx: mpsc::Sender<proto::ChangeEventBatch>) {
             match get_disk_info(sys).await {
                 Ok(mounts) => {
                     // TODO
+                    previous_mounts = mounts;
                 }
                 Err(err) => {
                     eprintln!("Error getting disk info: {:?}", err);
@@ -59,6 +111,7 @@ pub async fn collect_events(tx: mpsc::Sender<proto::ChangeEventBatch>) {
             match get_network_stats(sys).await {
                 Ok(network_devices) => {
                     // TODO
+                    previous_network_devices = network_devices;
                 }
                 Err(err) => {
                     eprintln!("Error getting network info: {:?}", err);
