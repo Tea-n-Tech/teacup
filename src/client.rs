@@ -7,27 +7,28 @@ use tonic::transport::Channel;
 
 struct EventSubmitter {
     client: EventServiceClient<Channel>,
-    tx: mpsc::Sender<data_collection::proto::ChangeEventBatch>,
-    rx: mpsc::Receiver<data_collection::proto::ChangeEventBatch>,
+    submission_handler: Option<tokio::task::JoinHandle<()>>,
 }
 
 impl Drop for EventSubmitter {
     fn drop(&mut self) {
-        self.rx.close();
+        if let Some(submission_handler) = self.submission_handler.take() {
+            submission_handler.abort();
+        }
     }
 }
 
 impl EventSubmitter {
     pub async fn new(channel: Channel) -> Self {
-        let (tx, rx) = mpsc::channel::<data_collection::proto::ChangeEventBatch>(32);
         Self {
             client: EventServiceClient::new(channel),
-            tx,
-            rx,
+            submission_handler: None,
         }
     }
 
-    async fn start_submission(&mut self) {
+    async fn submit_events(&mut self) -> Result<(), ()> {
+        let (tx, mut rx) = mpsc::channel::<data_collection::proto::ChangeEventBatch>(32);
+
         println!("Fetching initial state");
         let initial_state_result = self.client.initial_state(tonic::Request::new(())).await;
         if let Err(err) = &initial_state_result {
@@ -37,10 +38,14 @@ impl EventSubmitter {
 
         let initial_state = initial_state_result.unwrap().into_inner();
         println!("Got initial state: {:?}", initial_state);
-        // TODO init data collection from initial state
+
+        // collect data indefinitely and send data to the channel
+        let collect_handler = tokio::task::spawn(async {
+            data_collection::collect_events(tx).await;
+        });
 
         loop {
-            match self.rx.recv().await {
+            match rx.recv().await {
                 Some(event_batch) => {
                     println!("Sending events {:?}", event_batch);
                     let request = tonic::Request::new(event_batch);
