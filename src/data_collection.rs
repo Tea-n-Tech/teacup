@@ -14,37 +14,90 @@ pub mod proto {
 }
 
 pub async fn collect_events(tx: mpsc::Sender<proto::ChangeEventBatch>) {
-    let forever = tokio::task::spawn(async {
+    let forever = tokio::task::spawn(async move {
         let sys = &System::new();
         // TODO make configurable
         let mut interval = time::interval(time::Duration::from_secs(5));
         loop {
             interval.tick().await;
 
-            let cpu_change_event = get_cpu_info(sys).await.unwrap();
-            println!("Change Event: {:?}", cpu_change_event);
+            let mut events: Vec<proto::ChangeEvent> = vec![];
 
-            let mem_change_event = get_ram_info(sys).await;
-            println!("Change Event: {:?}", mem_change_event);
+            // cpu
+            let cpu_info = get_cpu_update_event(sys).await.unwrap();
+            let cpu_change_event = proto::ChangeEvent {
+                event: Some(proto::change_event::Event::Cpu(cpu_info)),
+                event_type: proto::EventType::Update.into(),
+            };
+            events.push(cpu_change_event);
 
-            let mounts = get_disk_info(sys).await;
-            println!("Change Event: {:?}", mounts);
+            // ram
+            match get_ram_info(sys).await {
+                Ok(ram_info) => {
+                    let mem_change_event = proto::ChangeEvent {
+                        event: Some(proto::change_event::Event::Memory(ram_info)),
+                        event_type: proto::EventType::Update.into(),
+                    };
+                    events.push(mem_change_event)
+                }
+                Err(e) => {
+                    eprintln!("Error getting RAM info: {:?}", e);
+                }
+            }
 
-            // too expensive
-            // let battery_change_events = get_battery_info(sys).await;
-            // println!("Change Event: {:?}", battery_change_events);
+            // disk
+            match get_disk_info(sys).await {
+                Ok(mounts) => {
+                    // TODO
+                }
+                Err(err) => {
+                    eprintln!("Error getting disk info: {:?}", err);
+                }
+            }
 
-            let network_stats = get_network_stats(sys).await;
-            println!("Change Event: {:?}", network_stats);
+            // network
+            match get_network_stats(sys).await {
+                Ok(network_devices) => {
+                    // TODO
+                }
+                Err(err) => {
+                    eprintln!("Error getting network info: {:?}", err);
+                }
+            }
 
-            let system_info = get_system_info(sys).await;
-            println!("Change Event: {:?}", system_info);
+            // System
+            match get_system_info(sys).await {
+                Ok(system_info) => {
+                    let system_change_event = proto::ChangeEvent {
+                        event: Some(proto::change_event::Event::SystemInfo(system_info)),
+                        event_type: proto::EventType::Update.into(),
+                    };
+                    events.push(system_change_event);
+                }
+                Err(e) => {
+                    eprintln!("Error getting system info: {:?}", e);
+                }
+            }
+
+            // Send stuff to the server
+            match tx.send(proto::ChangeEventBatch { events: events }).await {
+                Ok(_) => (),
+                Err(e) => {
+                    eprintln!("Error sending batch of events: {:?}", e);
+                }
+            }
         }
     });
-    forever.await;
+
+    match forever.await {
+        Ok(_) => {}
+        Err(e) => println!("Error collecting events: {}", e),
+    }
 }
 
-pub async fn get_cpu_info(sys: &impl Platform) -> Result<proto::CpuChangeEvent, std::io::Error> {
+async fn get_cpu_update_event(
+    sys: &impl Platform,
+) -> Result<proto::CpuChangeEvent, std::io::Error> {
     let usage: f32;
     let temp: f32;
 
@@ -67,13 +120,13 @@ pub async fn get_cpu_info(sys: &impl Platform) -> Result<proto::CpuChangeEvent, 
                     usage = cpu_load.user;
                 }
                 Err(e) => {
-                    println!("Error: {}", e);
+                    eprintln!("Error: {}", e);
                     return Err(e);
                 }
             }
         }
         Err(x) => {
-            println!("CPU load: error: {}", x);
+            eprintln!("CPU load: error: {}", x);
             return Err(x);
         }
     }
@@ -84,18 +137,18 @@ pub async fn get_cpu_info(sys: &impl Platform) -> Result<proto::CpuChangeEvent, 
             temp = cpu_temp;
         }
         Err(x) => {
-            println!("CPU temp: error: {}", x);
+            eprintln!("CPU temp: error: {}", x);
             return Err(x);
         }
     }
 
     Ok(proto::CpuChangeEvent {
-        usage: usage,
         temp: temp,
+        usage: usage,
     })
 }
 
-pub async fn get_ram_info(sys: &impl Platform) -> Result<proto::MemoryChangeEvent, std::io::Error> {
+async fn get_ram_info(sys: &impl Platform) -> Result<proto::MemoryChangeEvent, std::io::Error> {
     match sys.memory() {
         Ok(mem) => {
             println!("Memory Total: {}, Free: {}", mem.total, mem.free);
@@ -110,13 +163,13 @@ pub async fn get_ram_info(sys: &impl Platform) -> Result<proto::MemoryChangeEven
             })
         }
         Err(x) => {
-            println!("Memory load: error: {}", x);
+            eprintln!("Memory load: error: {}", x);
             Err(x)
         }
     }
 }
 
-pub async fn get_disk_info(sys: &impl Platform) -> Result<Vec<proto::Mount>, std::io::Error> {
+async fn get_disk_info(sys: &impl Platform) -> Result<Vec<proto::Mount>, std::io::Error> {
     match sys.mounts() {
         Ok(mounts) => {
             mounts.iter().for_each(|fs| {
@@ -138,13 +191,13 @@ pub async fn get_disk_info(sys: &impl Platform) -> Result<Vec<proto::Mount>, std
             Ok(mount_vec)
         }
         Err(x) => {
-            println!("Disk load: error: {}", x);
+            eprintln!("Disk load: error: {}", x);
             Err(x)
         }
     }
 }
 
-pub async fn get_battery_info(
+async fn get_battery_info(
     sys: &impl Platform,
 ) -> Result<proto::BatteryChangeEvent, std::io::Error> {
     let on_ac;
@@ -170,13 +223,13 @@ pub async fn get_battery_info(
             })
         }
         Err(x) => {
-            println!("Battery load: error: {}", x);
+            eprintln!("Battery load: error: {}", x);
             Err(x)
         }
     }
 }
 
-pub async fn get_system_info(sys: &impl Platform) -> Result<proto::SystemInfo, std::io::Error> {
+async fn get_system_info(sys: &impl Platform) -> Result<proto::SystemInfo, std::io::Error> {
     match sys.boot_time() {
         Ok(boot_time) => {
             println!("Boot Time: {}", boot_time);
@@ -189,13 +242,13 @@ pub async fn get_system_info(sys: &impl Platform) -> Result<proto::SystemInfo, s
             })
         }
         Err(x) => {
-            println!("Boot Time: error: {}", x);
+            eprintln!("Boot Time: error: {}", x);
             Err(x)
         }
     }
 }
 
-pub async fn get_network_stats(
+async fn get_network_stats(
     sys: &impl Platform,
 ) -> Result<Vec<proto::NetworkDevice>, std::io::Error> {
     match sys.networks() {
@@ -219,7 +272,7 @@ pub async fn get_network_stats(
             Ok(device_stats)
         }
         Err(err) => {
-            println!("Network load: error: {}", err);
+            eprintln!("Network load: error: {}", err);
             Err(err)
         }
     }

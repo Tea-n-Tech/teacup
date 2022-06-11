@@ -61,9 +61,12 @@ message ChangeEventBatch {
     repeated ChangeEvent events = 1;
 }
 
+message InitialStateResponse {
+    repeated Mount mounts = 1;
+    repeated NetworkDevice network_devices = 2;
+}
+
 service EventService {
-    // rpc AddEvent(ChangeEvent) returns (google.protobuf.Empty);
-    // rpc UpdateEvent(ChangeEvent) returns (google.protobuf.Empty);
-    // rpc DeleteEvent(ChangeEvent) returns (google.protobuf.Empty);
+    rpc InitialState(google.protobuf.Empty) returns (InitialStateResponse);
     rpc SendEvents(ChangeEventBatch) returns (google.protobuf.Empty) {}
 }

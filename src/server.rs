@@ -1,10 +1,8 @@
-use tonic::{
-    transport::{NamedService, Server},
-    Request, Response, Status,
-};
+use tonic;
 
 use self::proto::{
     event_service_server::EventService, event_service_server::EventServiceServer, ChangeEventBatch,
+    InitialStateResponse,
 };
 
 pub mod proto {
@@ -16,7 +14,7 @@ pub mod proto {
 #[derive(Clone, Debug, Default)]
 pub struct MetricService {}
 
-impl NamedService for MetricService {
+impl tonic::transport::NamedService for MetricService {
     const NAME: &'static str = "EventService";
 }
 
@@ -24,11 +22,18 @@ impl NamedService for MetricService {
 impl EventService for MetricService {
     async fn send_events(
         &self,
-        request: Request<ChangeEventBatch>,
-    ) -> Result<Response<()>, Status> {
+        request: tonic::Request<ChangeEventBatch>,
+    ) -> Result<tonic::Response<()>, tonic::Status> {
         let batch = request.into_inner();
         println!("Got batch: {:?}", batch);
-        Ok(Response::new(()))
+        Ok(tonic::Response::new(()))
+    }
+
+    async fn initial_state(
+        &self,
+        _request: tonic::Request<()>,
+    ) -> Result<tonic::Response<InitialStateResponse>, tonic::Status> {
+        Ok(tonic::Response::new(InitialStateResponse::default()))
     }
 }
 
@@ -39,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Listening on {}", addr);
 
-    Server::builder()
+    tonic::transport::Server::builder()
         .add_service(EventServiceServer::new(sv))
         .serve(addr)
         .await?;
