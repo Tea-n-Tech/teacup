@@ -1,18 +1,15 @@
 extern crate systemstat;
 extern crate tokio;
 
+use std::borrow::BorrowMut;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::hash::Hash;
-use std::iter::Map;
 
 use prost_types::Timestamp;
 use systemstat::Platform;
 use systemstat::System;
 use tokio::sync::mpsc;
 use tokio::time;
-
-use self::proto::NetworkDevice;
 
 pub mod proto {
     #![allow(unreachable_pub)]
@@ -31,7 +28,7 @@ pub async fn compare_network_devices(
     prev_devices: HashMap<String, proto::NetworkDevice>,
     new_devices: HashMap<String, proto::NetworkDevice>,
 ) -> Vec<proto::ChangeEvent> {
-    let events: Vec<proto::ChangeEvent> = Vec::new();
+    let mut events: Vec<proto::ChangeEvent> = Vec::new();
 
     let mut all_device_names: Vec<&String> = vec![];
     all_device_names.extend(prev_devices.keys());
@@ -42,15 +39,30 @@ pub async fn compare_network_devices(
         let new_device = new_devices.get(device_name);
 
         if prev_device.is_none() && new_device.is_some() {
-            // TODO add
+            events.push(proto::ChangeEvent {
+                event_type: proto::EventType::Add.into(),
+                event: Some(proto::change_event::Event::NetworkDevice(
+                    new_device.unwrap().clone(),
+                )),
+            });
         }
 
-        if prev_device.is_some() && new_device.is_some() {
-            // TODO update
+        if prev_device.is_some() && new_device.is_some() && prev_device != new_device {
+            events.push(proto::ChangeEvent {
+                event_type: proto::EventType::Update.into(),
+                event: Some(proto::change_event::Event::NetworkDevice(
+                    new_device.unwrap().clone(),
+                )),
+            });
         }
 
         if prev_device.is_some() && new_device.is_none() {
-            // TODO remove
+            events.push(proto::ChangeEvent {
+                event_type: proto::EventType::Delete.into(),
+                event: Some(proto::change_event::Event::NetworkDevice(
+                    prev_device.unwrap().clone(),
+                )),
+            });
         }
     }
 
@@ -99,8 +111,8 @@ pub async fn collect_events(
             // disk
             match get_disk_info(sys).await {
                 Ok(mounts) => {
-                    // TODO
                     previous_mounts = mounts;
+                    // events.extend(mount_events);
                 }
                 Err(err) => {
                     eprintln!("Error getting disk info: {:?}", err);
@@ -110,7 +122,7 @@ pub async fn collect_events(
             // network
             match get_network_stats(sys).await {
                 Ok(network_devices) => {
-                    // TODO
+                    // compare_network_devices(previous_network_devices, network_devices).await;
                     previous_network_devices = network_devices;
                 }
                 Err(err) => {
