@@ -1,7 +1,6 @@
 extern crate systemstat;
 extern crate tokio;
 
-use std::borrow::BorrowMut;
 use std::collections::HashMap;
 use std::hash::Hash;
 
@@ -17,6 +16,28 @@ pub mod proto {
     tonic::include_proto!("change_events");
 }
 
+pub trait ToEvent {
+    fn to_change_event(&self, event_type: proto::EventType) -> proto::ChangeEvent;
+}
+
+impl ToEvent for proto::NetworkDevice {
+    fn to_change_event(&self, event_type: proto::EventType) -> proto::ChangeEvent {
+        proto::ChangeEvent {
+            event_type: event_type.into(),
+            event: Some(proto::change_event::Event::NetworkDevice(self.clone())),
+        }
+    }
+}
+
+impl ToEvent for proto::Mount {
+    fn to_change_event(&self, event_type: proto::EventType) -> proto::ChangeEvent {
+        proto::ChangeEvent {
+            event_type: event_type.into(),
+            event: Some(proto::change_event::Event::Mount(self.clone())),
+        }
+    }
+}
+
 impl Eq for proto::NetworkDevice {}
 impl Hash for proto::NetworkDevice {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
@@ -24,9 +45,9 @@ impl Hash for proto::NetworkDevice {
     }
 }
 
-pub async fn compare_network_devices(
-    prev_devices: HashMap<String, proto::NetworkDevice>,
-    new_devices: HashMap<String, proto::NetworkDevice>,
+pub async fn get_change_events<T: ToEvent + std::cmp::PartialEq>(
+    prev_devices: &HashMap<String, T>,
+    new_devices: &HashMap<String, T>,
 ) -> Vec<proto::ChangeEvent> {
     let mut events: Vec<proto::ChangeEvent> = Vec::new();
 
@@ -39,30 +60,23 @@ pub async fn compare_network_devices(
         let new_device = new_devices.get(device_name);
 
         if prev_device.is_none() && new_device.is_some() {
-            events.push(proto::ChangeEvent {
-                event_type: proto::EventType::Add.into(),
-                event: Some(proto::change_event::Event::NetworkDevice(
-                    new_device.unwrap().clone(),
-                )),
-            });
+            events.push(new_device.unwrap().to_change_event(proto::EventType::Add));
         }
 
         if prev_device.is_some() && new_device.is_some() && prev_device != new_device {
-            events.push(proto::ChangeEvent {
-                event_type: proto::EventType::Update.into(),
-                event: Some(proto::change_event::Event::NetworkDevice(
-                    new_device.unwrap().clone(),
-                )),
-            });
+            events.push(
+                new_device
+                    .unwrap()
+                    .to_change_event(proto::EventType::Update),
+            );
         }
 
         if prev_device.is_some() && new_device.is_none() {
-            events.push(proto::ChangeEvent {
-                event_type: proto::EventType::Delete.into(),
-                event: Some(proto::change_event::Event::NetworkDevice(
-                    prev_device.unwrap().clone(),
-                )),
-            });
+            events.push(
+                prev_device
+                    .unwrap()
+                    .to_change_event(proto::EventType::Delete),
+            );
         }
     }
 
@@ -78,8 +92,16 @@ pub async fn collect_events(
         // TODO make configurable
         let mut interval = time::interval(time::Duration::from_secs(5));
 
-        let mut previous_mounts = initial_state.mounts;
-        let mut previous_network_devices = initial_state.network_devices;
+        let mut previous_mounts: HashMap<String, _> = initial_state
+            .mounts
+            .iter()
+            .map(|x| (x.device_name.clone(), x.clone()))
+            .collect();
+        let mut previous_network_devices: HashMap<String, _> = initial_state
+            .network_devices
+            .iter()
+            .map(|x| (x.name.clone(), x.clone()))
+            .collect();
 
         loop {
             interval.tick().await;
@@ -111,8 +133,9 @@ pub async fn collect_events(
             // disk
             match get_disk_info(sys).await {
                 Ok(mounts) => {
+                    let mount_events = get_change_events(&previous_mounts, &mounts).await;
                     previous_mounts = mounts;
-                    // events.extend(mount_events);
+                    events.extend(mount_events);
                 }
                 Err(err) => {
                     eprintln!("Error getting disk info: {:?}", err);
@@ -122,7 +145,9 @@ pub async fn collect_events(
             // network
             match get_network_stats(sys).await {
                 Ok(network_devices) => {
-                    // compare_network_devices(previous_network_devices, network_devices).await;
+                    let network_events =
+                        get_change_events(&previous_network_devices, &network_devices).await;
+                    events.extend(network_events);
                     previous_network_devices = network_devices;
                 }
                 Err(err) => {
@@ -234,7 +259,9 @@ async fn get_ram_info(sys: &impl Platform) -> Result<proto::MemoryChangeEvent, s
     }
 }
 
-async fn get_disk_info(sys: &impl Platform) -> Result<Vec<proto::Mount>, std::io::Error> {
+async fn get_disk_info(
+    sys: &impl Platform,
+) -> Result<HashMap<String, proto::Mount>, std::io::Error> {
     match sys.mounts() {
         Ok(mounts) => {
             mounts.iter().for_each(|fs| {
@@ -245,12 +272,17 @@ async fn get_disk_info(sys: &impl Platform) -> Result<Vec<proto::Mount>, std::io
             });
             let mount_vec = mounts
                 .iter()
-                .map(|fs| proto::Mount {
-                    device_name: fs.fs_mounted_from.clone(),
-                    mount_location: fs.fs_mounted_on.clone(),
-                    free: fs.avail.as_u64(),
-                    total: fs.total.as_u64(),
-                    fs_type: fs.fs_type.clone(),
+                .map(|fs| {
+                    (
+                        fs.fs_mounted_from.clone(),
+                        proto::Mount {
+                            device_name: fs.fs_mounted_from.clone(),
+                            mount_location: fs.fs_mounted_on.clone(),
+                            free: fs.avail.as_u64(),
+                            total: fs.total.as_u64(),
+                            fs_type: fs.fs_type.clone(),
+                        },
+                    )
                 })
                 .collect();
             Ok(mount_vec)
@@ -315,10 +347,10 @@ async fn get_system_info(sys: &impl Platform) -> Result<proto::SystemInfo, std::
 
 async fn get_network_stats(
     sys: &impl Platform,
-) -> Result<Vec<proto::NetworkDevice>, std::io::Error> {
+) -> Result<HashMap<String, proto::NetworkDevice>, std::io::Error> {
     match sys.networks() {
         Ok(networks) => {
-            let device_stats = networks
+            let device_stats: HashMap<_, _> = networks
                 .iter()
                 .map(|network| network.0)
                 .map(|name| {
@@ -327,11 +359,14 @@ async fn get_network_stats(
                         "{}: sent: {}, recv: {}",
                         name, network.tx_bytes, network.rx_bytes
                     );
-                    proto::NetworkDevice {
-                        name: name.clone(),
-                        bytes_received: network.rx_bytes.as_u64(),
-                        bytes_sent: network.tx_bytes.as_u64(),
-                    }
+                    (
+                        name.clone(),
+                        proto::NetworkDevice {
+                            name: name.clone(),
+                            bytes_received: network.rx_bytes.as_u64(),
+                            bytes_sent: network.tx_bytes.as_u64(),
+                        },
+                    )
                 })
                 .collect();
             Ok(device_stats)
