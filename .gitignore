@@ -1,1 +1,5 @@
+# no built binaries
 /target
+
+# no editor settings
+.vscode

@@ -1,0 +1,12 @@
+version: 3
+
+tasks:
+  server:
+    desc: Start the server receiving data
+    cmds:
+      - cargo run --bin server
+
+  client:
+    desc: Start the client sending telemetry
+    cmds:
+      - cargo run --bin client

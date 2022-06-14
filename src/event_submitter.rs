@@ -10,7 +10,6 @@ use crate::ClientCli;
 pub struct EventSubmitter {
     client: EventServiceClient<Channel>,
     submission_handler: Option<tokio::task::JoinHandle<()>>,
-    cli: ClientCli,
 }
 
 impl Drop for EventSubmitter {
@@ -26,16 +25,10 @@ impl Drop for EventSubmitter {
 
 impl EventSubmitter {
     pub async fn new(cli: ClientCli) -> Result<Self, tonic::transport::Error> {
-        match EventServiceClient::connect(format!(
-            "http://{}:{}",
-            cli.server_address, cli.server_port
-        ))
-        .await
-        {
+        match EventServiceClient::connect(format!("http://{}:{}", cli.address, cli.port)).await {
             Ok(client) => Ok(Self {
                 client,
                 submission_handler: None,
-                cli,
             }),
             Err(e) => {
                 eprintln!("Error connecting to event service: {:?}", e);
@@ -44,7 +37,22 @@ impl EventSubmitter {
         }
     }
 
-    pub async fn submit_events(&mut self) -> Result<(), ()> {
+    pub async fn start(&mut self) -> Result<(), ()> {
+        // This loop retries to contact the server in case of any errors
+        // during communication such as a disconnect
+        loop {
+            match self.submit_events().await {
+                Ok(_) => {}
+                Err(_) => {
+                    println!("Waiting 5 seconds before trying again.");
+                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                }
+            }
+            return Ok(());
+        }
+    }
+
+    async fn submit_events(&mut self) -> Result<(), ()> {
         let (tx, mut rx) = mpsc::channel::<data_collection::proto::ChangeEventBatch>(32);
 
         println!("Fetching initial state");

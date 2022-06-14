@@ -1,3 +1,6 @@
+use std::net::SocketAddr;
+
+use clap::Parser;
 use tonic;
 
 use self::proto::{
@@ -9,6 +12,13 @@ pub mod proto {
     #![allow(unreachable_pub)]
     #![allow(missing_docs)]
     tonic::include_proto!("change_events");
+}
+
+#[derive(Parser, Debug, Clone)]
+#[clap(author, version, about, long_about = None)]
+struct ServerCli {
+    #[clap(short = 'p', long, value_parser, default_value_t = 50055)]
+    port: u16,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -39,7 +49,9 @@ impl EventService for MetricService {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::1]:50051".parse().unwrap();
+    let cli_config = ServerCli::parse();
+
+    let addr: SocketAddr = format!("0.0.0.0:{}", cli_config.port).parse().unwrap();
     let sv = MetricService::default();
 
     println!("Listening on {}", addr);
