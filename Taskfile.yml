@@ -1,5 +1,8 @@
 version: 3
 
+env:
+  DATABASE_URL: postgres://teacup:teacup@localhost:5432/teacup
+
 tasks:
   server:
     desc: Start the server receiving data
@@ -10,3 +13,16 @@ tasks:
     desc: Start the client sending telemetry
     cmds:
       - cargo run --bin client
+
+  start-localsetup:
+    desc: Setup the local environment
+    cmds:
+      - docker-compose up -d
+      - sqlx database create
+      - sqlx migrate run
+
+  stop-localsetup:
+    desc: Stop the local environment
+    cmds:
+      - docker-compose down
+      - docker volume rm teacup_teacup-db-data

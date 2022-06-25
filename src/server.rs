@@ -1,6 +1,8 @@
+mod store_events;
 use std::net::SocketAddr;
 
 use clap::Parser;
+use store_events::process_event;
 use tonic;
 
 use self::proto::{
@@ -36,6 +38,9 @@ impl EventService for MetricService {
     ) -> Result<tonic::Response<()>, tonic::Status> {
         let batch = request.into_inner();
         println!("Got batch: {:?}", batch);
+
+        batch.events.as_slice().iter().for_each(process_event);
+
         Ok(tonic::Response::new(()))
     }
 

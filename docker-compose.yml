@@ -1,0 +1,17 @@
+version: '3'
+
+services:
+  db:
+    image: timescale/timescaledb:latest-pg14
+    environment:
+      POSTGRES_USER: "teacup"
+      POSTGRES_PASSWORD: "teacup"
+      POSTGRES_DB: "teacup"
+    volumes:
+      - teacup-db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  teacup-db-data:
+    driver: local
