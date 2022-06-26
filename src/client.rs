@@ -4,6 +4,8 @@ mod event_submitter;
 use clap::Parser;
 use event_submitter::EventSubmitter;
 
+extern crate machine_uid;
+
 #[derive(Parser, Debug, Clone)]
 #[clap(author, version, about, long_about = None)]
 pub struct ClientCli {

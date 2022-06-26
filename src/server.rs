@@ -2,7 +2,7 @@ mod store_events;
 use std::net::SocketAddr;
 
 use clap::Parser;
-use store_events::process_event;
+use store_events::Database;
 use tonic;
 
 use self::proto::{
@@ -23,8 +23,17 @@ struct ServerCli {
     port: u16,
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct MetricService {}
+#[derive(Clone, Debug)]
+pub struct MetricService {
+    db: Database,
+}
+
+impl MetricService {
+    pub async fn new() -> Self {
+        let db = Database::new("postgres://teacup:teacup@localhost:5432/teacup").await;
+        MetricService { db }
+    }
+}
 
 impl tonic::transport::NamedService for MetricService {
     const NAME: &'static str = "EventService";
@@ -39,7 +48,7 @@ impl EventService for MetricService {
         let batch = request.into_inner();
         println!("Got batch: {:?}", batch);
 
-        batch.events.as_slice().iter().for_each(process_event);
+        self.db.process_event(&batch).await;
 
         Ok(tonic::Response::new(()))
     }
@@ -57,7 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli_config = ServerCli::parse();
 
     let addr: SocketAddr = format!("0.0.0.0:{}", cli_config.port).parse().unwrap();
-    let sv = MetricService::default();
+    let sv = MetricService::new().await;
 
     println!("Listening on {}", addr);
 

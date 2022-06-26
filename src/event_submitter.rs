@@ -42,7 +42,12 @@ impl EventSubmitter {
         // during communication such as a disconnect
         loop {
             match self.submit_events().await {
-                Ok(_) => {}
+                Ok(_) => {
+                    // The process runs indefinitely but
+                    // we assume getting here means
+                    // graceful termination for whatever
+                    // reason.
+                }
                 Err(_) => {
                     println!("Waiting 5 seconds before trying again.");
                     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
@@ -54,6 +59,8 @@ impl EventSubmitter {
 
     async fn submit_events(&mut self) -> Result<(), ()> {
         let (tx, mut rx) = mpsc::channel::<data_collection::proto::ChangeEventBatch>(32);
+
+        let machine_id = machine_uid::get().expect("Could not retrieve machine uid.");
 
         println!("Fetching initial state");
         let initial_state_result = self.client.initial_state(tonic::Request::new(())).await;

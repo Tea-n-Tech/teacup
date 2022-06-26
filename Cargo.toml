@@ -33,6 +33,8 @@ clap = { version = "3.2.1", features = ["derive"] }
 
 sqlx = { version = "0.5", features = [ "runtime-tokio-rustls","postgres"] }
 
+machine-uid = "0.2"
+
 [build-dependencies]
 prost-build = { version = "0.9" }
 tonic-build = "0.7"
