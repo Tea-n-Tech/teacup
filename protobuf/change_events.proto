@@ -72,9 +72,6 @@ message InitialStateResponse {
 }
 
 service EventService {
-    // TODO register machine if not already done,
-    // check if a user already owns the machine too
-    // if so don't allow to submit data without user auth
     rpc InitialState(InitialStateRequest) returns (InitialStateResponse);
     rpc SendEvents(ChangeEventBatch) returns (google.protobuf.Empty) {}
 }

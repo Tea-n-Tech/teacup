@@ -86,12 +86,15 @@ pub async fn get_change_events<T: ToEvent + std::cmp::PartialEq>(
 pub async fn collect_events(
     tx: mpsc::Sender<proto::ChangeEventBatch>,
     initial_state: proto::InitialStateResponse,
+    machine_id: i64,
 ) {
     let forever = tokio::task::spawn(async move {
         let sys = &System::new();
         // TODO make configurable
         let mut interval = time::interval(time::Duration::from_secs(5));
 
+        // Get previous data so that we only send changes which happened
+        // in the meantime
         let mut previous_mounts: HashMap<String, _> = initial_state
             .mounts
             .iter()
@@ -103,6 +106,8 @@ pub async fn collect_events(
             .map(|x| (x.name.clone(), x.clone()))
             .collect();
 
+        // Do a looping ... wheee
+        // Don't do that at home
         loop {
             interval.tick().await;
 
@@ -170,7 +175,10 @@ pub async fn collect_events(
             }
 
             // Send stuff to the server
-            match tx.send(proto::ChangeEventBatch { events: events }).await {
+            match tx
+                .send(proto::ChangeEventBatch { machine_id, events })
+                .await
+            {
                 Ok(_) => (),
                 Err(e) => {
                     eprintln!("Error sending batch of events: {:?}", e);

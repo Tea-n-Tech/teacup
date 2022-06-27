@@ -5,12 +5,16 @@
 RPC Monitoring:
 
 - [ ] Register a new machine if not exists
-  - [ ] Check if a user already claims the machine
-  - [ ] If a machine is claimed require token to transmit data
 - [ ] Use an 8 byte machine id
 - Machine id
   - [ ] Autogenerate 8 byte machine id
   - [ ] Store it locally so that users may transfer or change it
+  - [ ] Ensure that machine id is unique during generation
+
+General:
+
+- [ ] Test strategy
+- [ ] Logging framework
 
 ## Edge-Cases
 

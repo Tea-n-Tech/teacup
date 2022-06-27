@@ -1560,12 +1560,14 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "serde_json",
+ "sha2",
  "sqlx",
  "systemstat",
  "tokio",
  "tokio-stream",
  "tonic",
  "tonic-build",
+ "xdg",
 ]
 
 [[package]]
@@ -2130,4 +2132,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2986deb581c4fe11b621998a5e53361efe6b48a151178d0cd9eeffa4dc6acc9"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "xdg"
+version = "2.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c4583db5cbd4c4c0303df2d15af80f0539db703fa1c68802d4cbbd2dd0f88f6"
+dependencies = [
+ "dirs",
 ]

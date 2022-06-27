@@ -12,7 +12,8 @@ $$ LANGUAGE plpgsql;
 
 -- Users
 CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
+    name TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

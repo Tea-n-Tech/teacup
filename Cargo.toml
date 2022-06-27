@@ -35,6 +35,10 @@ sqlx = { version = "0.5", features = [ "runtime-tokio-rustls","postgres"] }
 
 machine-uid = "0.2"
 
+sha2 = "0.10.2"
+
+xdg = "2.4.1"
+
 [build-dependencies]
 prost-build = { version = "0.9" }
 tonic-build = "0.7"

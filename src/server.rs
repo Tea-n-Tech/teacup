@@ -7,7 +7,7 @@ use tonic;
 
 use self::proto::{
     event_service_server::EventService, event_service_server::EventServiceServer, ChangeEventBatch,
-    InitialStateResponse,
+    InitialStateRequest, InitialStateResponse,
 };
 
 pub mod proto {
@@ -55,9 +55,18 @@ impl EventService for MetricService {
 
     async fn initial_state(
         &self,
-        _request: tonic::Request<()>,
+        _request: tonic::Request<InitialStateRequest>,
     ) -> Result<tonic::Response<InitialStateResponse>, tonic::Status> {
         Ok(tonic::Response::new(InitialStateResponse::default()))
+    }
+
+    async fn machine_handshake(
+        &self,
+        request: tonic::Request<proto::MachineHandshakeRequest>,
+    ) -> Result<tonic::Response<proto::MachineHandshakeResponse>, tonic::Status> {
+        Ok(tonic::Response::new(
+            proto::MachineHandshakeResponse::default(),
+        ))
     }
 }
 

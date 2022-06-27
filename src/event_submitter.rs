@@ -1,7 +1,11 @@
 #[path = "./data_collection.rs"]
 mod data_collection;
+#[path = "./local_settings.rs"]
+mod local_settings;
 
 use data_collection::proto::event_service_client::EventServiceClient;
+use data_collection::proto::InitialStateRequest;
+use machine_uid::machine_id;
 use tokio::sync::mpsc;
 use tonic::transport::Channel;
 
@@ -10,6 +14,7 @@ use crate::ClientCli;
 pub struct EventSubmitter {
     client: EventServiceClient<Channel>,
     submission_handler: Option<tokio::task::JoinHandle<()>>,
+    machine_id: i64,
 }
 
 impl Drop for EventSubmitter {
@@ -24,11 +29,12 @@ impl Drop for EventSubmitter {
 }
 
 impl EventSubmitter {
-    pub async fn new(cli: ClientCli) -> Result<Self, tonic::transport::Error> {
+    pub async fn new(cli: ClientCli, machine_id: i64) -> Result<Self, tonic::transport::Error> {
         match EventServiceClient::connect(format!("http://{}:{}", cli.address, cli.port)).await {
             Ok(client) => Ok(Self {
                 client,
                 submission_handler: None,
+                machine_id,
             }),
             Err(e) => {
                 eprintln!("Error connecting to event service: {:?}", e);
@@ -60,10 +66,13 @@ impl EventSubmitter {
     async fn submit_events(&mut self) -> Result<(), ()> {
         let (tx, mut rx) = mpsc::channel::<data_collection::proto::ChangeEventBatch>(32);
 
-        let machine_id = machine_uid::get().expect("Could not retrieve machine uid.");
-
         println!("Fetching initial state");
-        let initial_state_result = self.client.initial_state(tonic::Request::new(())).await;
+        let initial_state_result = self
+            .client
+            .initial_state(tonic::Request::new(InitialStateRequest {
+                machine_id: self.machine_id,
+            }))
+            .await;
         if let Err(err) = &initial_state_result {
             eprintln!("Failed to get initial state: {}", err);
             return Err(());
@@ -73,8 +82,9 @@ impl EventSubmitter {
         println!("Got initial state: {:?}", initial_state);
 
         // collect data indefinitely and send data to the channel
+        let machine_id_clone = self.machine_id.clone();
         self.submission_handler = Some(tokio::task::spawn(async move {
-            data_collection::collect_events(tx, initial_state).await;
+            data_collection::collect_events(tx, initial_state, machine_id_clone).await;
         }));
 
         loop {
