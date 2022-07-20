@@ -37,26 +37,53 @@ impl Database for PgDatabase {
             match &event.event {
                 Some(event) => match event {
                     Event::Cpu(cpu) => {
+                        // general CPU data which is time independent
                         match sqlx::query(
                             "
-                    INSERT INTO cpu (user_id) VALUES ($1)",
+                    INSERT INTO cpu (machine_id, n_cores, model)
+                        VALUES ($1, $2, $3)
+                        ON CONFLICT (machine_id) DO UPDATE SET
+                            n_cores = $2,
+                            model = $3",
                         )
+                        .bind(event_batch.machine_id)
                         .bind(1 as i32)
+                        .bind("AMD Ryzen 5 1600X")
                         .execute(&self.pool)
                         .await
                         {
-                            Ok(_) => println!("Inserted CPU event"),
+                            Ok(_) => println!("Inserted CPU data"),
+                            Err(err) => {
+                                eprintln!("Failed to insert CPU event: {}", err);
+                                return;
+                            }
+                        }
+
+                        // CPU data which changes over time
+                        match sqlx::query(
+                            "
+                    INSERT INTO cpu_statistics (machine_id, usage, temperature)
+                        VALUES ($1, $2, $3)
+                        ",
+                        )
+                        .bind(event_batch.machine_id)
+                        .bind(cpu.usage)
+                        .bind(cpu.temp)
+                        .execute(&self.pool)
+                        .await
+                        {
+                            Ok(_) => println!("Inserted CPU statistics"),
                             Err(err) => {
                                 eprintln!("Failed to insert CPU event: {}", err);
                                 return;
                             }
                         }
                     }
-                    Event::Memory(mem) => println!("Memory event"),
-                    Event::Mount(mount) => println!("Mount event"),
+                    Event::Memory(mem) => {}
+                    Event::Mount(mount) => {}
                     Event::NetworkDevice(net_device) => {}
-                    Event::SystemInfo(info) => println!("System info event"),
-                    Event::Battery(battery) => println!("Battery event"),
+                    Event::SystemInfo(info) => {}
+                    Event::Battery(battery) => {}
                 },
                 None => {}
             }

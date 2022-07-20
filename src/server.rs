@@ -1,8 +1,8 @@
-mod store_events;
+mod database;
 use std::{net::SocketAddr, sync::Arc};
 
 use clap::Parser;
-use store_events::{Database, PgDatabase};
+use database::{Database, PgDatabase};
 use tonic;
 
 use self::proto::{

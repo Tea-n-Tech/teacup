@@ -44,7 +44,7 @@ EXECUTE PROCEDURE trigger_set_timestamp();
 -- Covers all data which generally does not change during runtime
 -- and requires to be set only once.
 CREATE TABLE IF NOT EXISTS cpu (
-    machine_id INTEGER PRIMARY KEY,
+    machine_id BIGINT PRIMARY KEY,
     n_cores INTEGER,
     model TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
