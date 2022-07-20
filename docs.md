@@ -7,9 +7,10 @@ RPC Monitoring:
 - [ ] Register a new machine if not exists
 - [ ] Use an 8 byte machine id
 - Machine id
-  - [ ] Autogenerate 8 byte machine id
-  - [ ] Store it locally so that users may transfer or change it
-  - [ ] Ensure that machine id is unique during generation
+  - [x] Autogenerate 8 byte machine id
+  - [x] Store it locally so that users may transfer or change it
+  - [ ] Ensure that machine id is unique by checking the db
+- [ ] Add token authentication middleware
 
 General:
 

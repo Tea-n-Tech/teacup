@@ -45,12 +45,12 @@ pub async fn load_settings(config_path: &PathBuf) -> LocalSettings {
 async fn generate_machine_id() -> i64 {
     match machine_uid::get() {
         Ok(id) => {
+            // TODO investigate a more appropriate hashing algorithm
             let mut hasher = Sha256::new();
             hasher.update(id);
             let hash = hasher.finalize();
-            let a = hash.iter();
             i64::from_ne_bytes(
-                // the hash will be long enough so unwrapping is safe
+                // unwrapping is safe as the hash of sha256 is long enough
                 hash.as_slice().split_at(8).0.try_into().unwrap(),
             )
         }

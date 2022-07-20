@@ -1,8 +1,8 @@
 mod store_events;
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 
 use clap::Parser;
-use store_events::Database;
+use store_events::{Database, PgDatabase};
 use tonic;
 
 use self::proto::{
@@ -25,13 +25,13 @@ struct ServerCli {
 
 #[derive(Clone, Debug)]
 pub struct MetricService {
-    db: Database,
+    db: Arc<dyn Database>,
 }
 
 impl MetricService {
     pub async fn new() -> Self {
-        let db = Database::new("postgres://teacup:teacup@localhost:5432/teacup").await;
-        MetricService { db }
+        let db = PgDatabase::new("postgres://teacup:teacup@localhost:5432/teacup").await;
+        MetricService { db: Arc::new(db) }
     }
 }
 
@@ -58,15 +58,6 @@ impl EventService for MetricService {
         _request: tonic::Request<InitialStateRequest>,
     ) -> Result<tonic::Response<InitialStateResponse>, tonic::Status> {
         Ok(tonic::Response::new(InitialStateResponse::default()))
-    }
-
-    async fn machine_handshake(
-        &self,
-        request: tonic::Request<proto::MachineHandshakeRequest>,
-    ) -> Result<tonic::Response<proto::MachineHandshakeResponse>, tonic::Status> {
-        Ok(tonic::Response::new(
-            proto::MachineHandshakeResponse::default(),
-        ))
     }
 }
 

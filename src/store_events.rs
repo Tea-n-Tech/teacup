@@ -1,27 +1,38 @@
+use std::fmt::Debug;
+
 use crate::proto::ChangeEventBatch;
 
 use super::proto::change_event::Event;
-use super::proto::{ChangeEvent, EventType};
+use super::proto::EventType;
+use async_trait::async_trait;
 use sqlx::pool::Pool;
 use sqlx::postgres::{PgPoolOptions, Postgres};
 
+#[async_trait]
+pub trait Database: Sync + Send + Debug {
+    async fn process_event(&self, event_batch: &ChangeEventBatch);
+}
+
 #[derive(Debug, Clone)]
-pub struct Database {
+pub struct PgDatabase {
     pool: Pool<Postgres>,
 }
 
-impl Database {
-    pub async fn new(db_uri: &str) -> Database {
+impl PgDatabase {
+    pub async fn new(db_uri: &str) -> PgDatabase {
         let pool = PgPoolOptions::new()
             .max_connections(5)
             .connect(db_uri)
             .await
             .expect("Failed to connect to database");
 
-        Database { pool }
+        PgDatabase { pool }
     }
+}
 
-    pub async fn process_event(&self, event_batch: &ChangeEventBatch) {
+#[async_trait]
+impl Database for PgDatabase {
+    async fn process_event(&self, event_batch: &ChangeEventBatch) {
         for event in event_batch.events.iter() {
             match &event.event {
                 Some(event) => match event {

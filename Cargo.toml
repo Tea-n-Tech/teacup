@@ -39,6 +39,8 @@ sha2 = "0.10.2"
 
 xdg = "2.4.1"
 
+async-trait = "0.1.56"
+
 [build-dependencies]
 prost-build = { version = "0.9" }
 tonic-build = "0.7"

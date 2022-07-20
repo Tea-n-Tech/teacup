@@ -3,16 +3,21 @@ mod data_collection;
 #[path = "./local_settings.rs"]
 mod local_settings;
 
+use std::fmt::format;
+
 use data_collection::proto::event_service_client::EventServiceClient;
 use data_collection::proto::InitialStateRequest;
-use machine_uid::machine_id;
 use tokio::sync::mpsc;
+use tonic::codegen::InterceptedService;
+use tonic::metadata::MetadataValue;
 use tonic::transport::Channel;
+use tonic::{Request, Status};
 
 use crate::ClientCli;
 
 pub struct EventSubmitter {
     client: EventServiceClient<Channel>,
+    // client: EventServiceClient<InterceptedService<Channel, ()>>,
     submission_handler: Option<tokio::task::JoinHandle<()>>,
     machine_id: i64,
 }
@@ -29,17 +34,31 @@ impl Drop for EventSubmitter {
 }
 
 impl EventSubmitter {
-    pub async fn new(cli: ClientCli, machine_id: i64) -> Result<Self, tonic::transport::Error> {
-        match EventServiceClient::connect(format!("http://{}:{}", cli.address, cli.port)).await {
-            Ok(client) => Ok(Self {
-                client,
-                submission_handler: None,
-                machine_id,
-            }),
-            Err(e) => {
-                eprintln!("Error connecting to event service: {:?}", e);
-                Err(e)
-            }
+    pub async fn new(cli: ClientCli, machine_id: i64) -> Self {
+        let channel = Channel::from_shared(format!("{}:{}", cli.address, cli.port).to_string())
+            .expect("Invalid server address")
+            .connect()
+            .await
+            .expect("Error connecting to the server");
+
+        let token: MetadataValue<_> = "Bearer some-auth-token".parse().unwrap();
+
+        let event_service =
+            EventServiceClient::connect(format!("{}:{}", cli.address, cli.port).to_string())
+                .await
+                .expect("Cannot connect to server");
+
+        // let abc = move |mut req: Request<()>| {
+        //     req.metadata_mut().insert("authorization", token.clone());
+        //     Ok(req)
+        // };
+
+        // let event_service = EventServiceClient::with_interceptor(channel, abc);
+
+        Self {
+            client: event_service,
+            submission_handler: None,
+            machine_id,
         }
     }
 
