@@ -69,3 +69,17 @@ CREATE TABLE IF NOT EXISTS cpu_statistics (
 );
 
 CREATE INDEX cpu_statistics_machine_index on cpu_statistics (machine_id);
+
+-- Mounts
+CREATE TABLE IF NOT EXISTS mounts (
+    id BIGSERIAL PRIMARY KEY,
+    machine_id BIGINT NOT NULL,
+    device_name TEXT NOT NULL,
+    mount_location TEXT NOT NULL,
+    total BIGINT NOT NULL,
+    free BIGINT NOT NULL,
+    fs_type TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX mounts_index on mounts (machine_id, device_name);
