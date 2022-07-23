@@ -57,6 +57,10 @@ impl EventService for MetricService {
         &self,
         _request: tonic::Request<InitialStateRequest>,
     ) -> Result<tonic::Response<InitialStateResponse>, tonic::Status> {
+        // TODO
+        // retrieve initial state data
+        // store initial data submitted
+
         Ok(tonic::Response::new(InitialStateResponse::default()))
     }
 }

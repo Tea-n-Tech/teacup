@@ -4,6 +4,7 @@ use crate::proto::ChangeEventBatch;
 
 use super::proto::change_event::Event;
 use super::proto::EventType;
+use super::proto::SystemInfo;
 use async_trait::async_trait;
 use sqlx::pool::Pool;
 use sqlx::postgres::{PgPoolOptions, Postgres};
@@ -11,6 +12,7 @@ use sqlx::postgres::{PgPoolOptions, Postgres};
 #[async_trait]
 pub trait Database: Sync + Send + Debug {
     async fn process_event(&self, event_batch: &ChangeEventBatch);
+    async fn save_system_info(&self, machine_id: i64, system_info: &SystemInfo);
 }
 
 #[derive(Debug, Clone)]
@@ -34,17 +36,20 @@ impl PgDatabase {
 impl Database for PgDatabase {
     async fn process_event(&self, event_batch: &ChangeEventBatch) {
         for event in event_batch.events.iter() {
+            println!("Got event: {:?}", event);
+
+            let event_type = event.event_type();
             match &event.event {
                 Some(event) => match event {
                     Event::Cpu(cpu) => {
                         // general CPU data which is time independent
                         match sqlx::query(
                             "
-                    INSERT INTO cpu (machine_id, n_cores, model)
-                        VALUES ($1, $2, $3)
-                        ON CONFLICT (machine_id) DO UPDATE SET
-                            n_cores = $2,
-                            model = $3",
+                        INSERT INTO cpu (machine_id, n_cores, model)
+                            VALUES ($1, $2, $3)
+                            ON CONFLICT (machine_id) DO UPDATE SET
+                                n_cores = $2,
+                                model = $3",
                         )
                         .bind(event_batch.machine_id)
                         .bind(1 as i32)
@@ -62,8 +67,8 @@ impl Database for PgDatabase {
                         // CPU data which changes over time
                         match sqlx::query(
                             "
-                    INSERT INTO cpu_statistics (machine_id, usage, temperature)
-                        VALUES ($1, $2, $3)
+                        INSERT INTO cpu_statistics (machine_id, usage, temperature)
+                            VALUES ($1, $2, $3)
                         ",
                         )
                         .bind(event_batch.machine_id)
@@ -79,23 +84,110 @@ impl Database for PgDatabase {
                             }
                         }
                     }
-                    Event::Memory(mem) => {}
-                    Event::Mount(mount) => {}
+                    Event::Memory(mem) => {
+                        match sqlx::query(
+                            "
+                        INSERT INTO memory_statistics (machine_id, total, free)
+                            VALUES ($1, $2, $3)
+                            ",
+                        )
+                        .bind(event_batch.machine_id)
+                        .bind(u64_to_i64(mem.total))
+                        .bind(u64_to_i64(mem.free))
+                        .execute(&self.pool)
+                        .await
+                        {
+                            Ok(_) => println!("Inserted memory data"),
+                            Err(err) => {
+                                eprintln!("Failed to insert memory event: {}", err);
+                            }
+                        }
+                    }
+                    Event::Mount(mount) => {
+                        let query = match event_type {
+                            EventType::Add | EventType::Update => sqlx::query(
+                                "
+                                INSERT INTO mounts (
+                                    machine_id, device_name, mount_location,
+                                    total, free, fs_type    
+                                ) 
+                                VALUES ($1, $2, $3, $4, $5, $6)
+                                ON CONFLICT (machine_id, device_name) DO UPDATE SET
+                                    mount_location = $3,
+                                    total = $4,
+                                    free = $5,
+                                    fs_type = $6
+                                    ",
+                            )
+                            .bind(event_batch.machine_id)
+                            .bind(mount.device_name.to_string())
+                            .bind(mount.mount_location.to_string())
+                            .bind(u64_to_i64(mount.total))
+                            .bind(u64_to_i64(mount.free))
+                            .bind(mount.fs_type.to_string()),
+
+                            EventType::Delete => sqlx::query(
+                                "
+                                DELETE FROM mounts WHERE
+                                    machine_id = $1 AND
+                                    device_name = $2
+                                ",
+                            )
+                            .bind(event_batch.machine_id)
+                            .bind(mount.device_name.to_string()),
+                        };
+
+                        match query.execute(&self.pool).await {
+                            Ok(_) => println!("Inserted or updated mount"),
+                            Err(err) => {
+                                eprintln!("Failed to insert mount event: {}", err);
+                            }
+                        };
+                    }
                     Event::NetworkDevice(net_device) => {}
-                    Event::SystemInfo(info) => {}
-                    Event::Battery(battery) => {}
                 },
                 None => {}
             }
+        }
+    }
 
-            match EventType::from_i32(event.event_type) {
-                Some(EventType::Add) => {}
-                Some(EventType::Update) => {}
-                Some(EventType::Delete) => {}
-                None => {}
+    async fn save_system_info(&self, machine_id: i64, system_info: &SystemInfo) {
+        let mut boot_time: i64 = 0;
+        match &system_info.boot_time {
+            Some(boot_time_) => boot_time = boot_time_.seconds,
+            None => {}
+        };
+
+        match sqlx::query(
+            "
+        INSERT INTO system_info (machine_id, boot_time)
+            VALUES ($1, $2)
+            ON CONFLICT (machine_id) DO UPDATE SET
+                boot_time = $2,
+            ",
+        )
+        .bind(machine_id)
+        .bind(boot_time)
+        .execute(&self.pool)
+        .await
+        {
+            Ok(_) => println!("Inserted system info"),
+            Err(err) => {
+                eprintln!("Failed to insert system info event: {}", err);
             }
+        }
+    }
+}
 
-            println!("Got event: {:?}", event);
+fn u64_to_i64(number: u64) -> i64 {
+    match i64::try_from(number) {
+        Ok(number) => number,
+        Err(err) => {
+            // It is important to see in the logs how often this
+            // occurs. Unfortunately, sqlx does not support u64
+            // so there is not much we can do here.
+            eprintln!("Failed to convert u64 {} to i64: {}", number, err);
+            0
         }
     }
 }

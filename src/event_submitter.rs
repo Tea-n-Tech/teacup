@@ -7,12 +7,15 @@ use std::fmt::format;
 
 use data_collection::proto::event_service_client::EventServiceClient;
 use data_collection::proto::InitialStateRequest;
+use systemstat::{Platform, System};
+
 use tokio::sync::mpsc;
 use tonic::codegen::InterceptedService;
 use tonic::metadata::MetadataValue;
 use tonic::transport::Channel;
 use tonic::{Request, Status};
 
+use crate::event_submitter::data_collection::get_system_info;
 use crate::ClientCli;
 
 pub struct EventSubmitter {
@@ -86,10 +89,12 @@ impl EventSubmitter {
         let (tx, mut rx) = mpsc::channel::<data_collection::proto::ChangeEventBatch>(32);
 
         println!("Fetching initial state");
+        let sys = System::new();
         let initial_state_result = self
             .client
             .initial_state(tonic::Request::new(InitialStateRequest {
                 machine_id: self.machine_id,
+                system_info: Some(get_system_info(&sys).await),
             }))
             .await;
         if let Err(err) = &initial_state_result {

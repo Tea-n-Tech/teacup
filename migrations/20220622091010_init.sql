@@ -82,4 +82,24 @@ CREATE TABLE IF NOT EXISTS mounts (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE INDEX mounts_machine_index on mounts (machine_id);
 CREATE UNIQUE INDEX mounts_index on mounts (machine_id, device_name);
+
+-- Memory
+CREATE TABLE IF NOT EXISTS memory_statistics (
+    id BIGSERIAL PRIMARY KEY,
+    machine_id BIGINT,
+    total BIGINT NOT NULL,
+    free BIGINT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX memory_statistics_machine_index on memory_statistics (machine_id);
+
+-- System Info
+CREATE TABLE IF NOT EXISTS system_info (
+    id BIGSERIAL PRIMARY KEY,
+    machine_id BIGINT NOT NULL,
+    boot_time TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

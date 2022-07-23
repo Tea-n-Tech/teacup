@@ -161,18 +161,18 @@ pub async fn collect_events(
             }
 
             // System
-            match get_system_info(sys).await {
-                Ok(system_info) => {
-                    let system_change_event = proto::ChangeEvent {
-                        event: Some(proto::change_event::Event::SystemInfo(system_info)),
-                        event_type: proto::EventType::Update.into(),
-                    };
-                    events.push(system_change_event);
-                }
-                Err(e) => {
-                    eprintln!("Error getting system info: {:?}", e);
-                }
-            }
+            // match get_system_info(sys).await {
+            //     Ok(system_info) => {
+            //         let system_change_event = proto::ChangeEvent {
+            //             event: Some(proto::change_event::Event::SystemInfo(system_info)),
+            //             event_type: proto::EventType::Update.into(),
+            //         };
+            //         events.push(system_change_event);
+            //     }
+            //     Err(e) => {
+            //         eprintln!("Error getting system info: {:?}", e);
+            //     }
+            // }
 
             // Send stuff to the server
             match tx
@@ -302,54 +302,24 @@ async fn get_disk_info(
     }
 }
 
-async fn get_battery_info(
-    sys: &impl Platform,
-) -> Result<proto::BatteryChangeEvent, std::io::Error> {
-    let on_ac;
-    match sys.on_ac_power() {
-        Ok(on_ac_power) => on_ac = on_ac_power,
-        Err(err) => {
-            println!("On AC load: error: {}", err);
-            return Err(err);
-        }
-    }
-
-    match sys.battery_life() {
-        Ok(battery) => {
-            println!(
-                "Battery Life: Remain Capacity: {} Remaining Time: {} mins",
-                battery.remaining_capacity,
-                battery.remaining_time.as_secs() / 60,
-            );
-            Ok(proto::BatteryChangeEvent {
-                remaining_capacity: battery.remaining_capacity,
-                remaining_seconds: battery.remaining_time.as_secs(),
-                power_connected: on_ac,
-            })
-        }
-        Err(x) => {
-            eprintln!("Battery load: error: {}", x);
-            Err(x)
-        }
-    }
-}
-
-async fn get_system_info(sys: &impl Platform) -> Result<proto::SystemInfo, std::io::Error> {
+pub async fn get_system_info(sys: &impl Platform) -> proto::SystemInfo {
+    let mut boot_time: i64 = 0;
     match sys.boot_time() {
-        Ok(boot_time) => {
-            println!("Boot Time: {}", boot_time);
-            Ok(proto::SystemInfo {
-                boot_time: Some(Timestamp {
-                    seconds: boot_time.timestamp(),
-                    // nanos are a bit too much
-                    nanos: 0,
-                }),
-            })
+        Ok(new_boot_time) => {
+            println!("Boot Time: {}", new_boot_time);
+            boot_time = new_boot_time.timestamp();
         }
         Err(x) => {
             eprintln!("Boot Time: error: {}", x);
-            Err(x)
         }
+    }
+
+    proto::SystemInfo {
+        boot_time: Some(Timestamp {
+            seconds: boot_time,
+            // nanos are a bit too much
+            nanos: 0,
+        }),
     }
 }
 

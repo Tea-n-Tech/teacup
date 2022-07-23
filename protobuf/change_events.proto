@@ -29,12 +29,6 @@ message NetworkDevice {
     uint64 bytes_sent = 3;
 }
 
-message BatteryChangeEvent {
-    uint64 remaining_seconds = 1;
-    float remaining_capacity = 2;
-    bool power_connected = 3;
-}
-
 message SystemInfo {
     google.protobuf.Timestamp boot_time = 1;
 }
@@ -52,8 +46,6 @@ message ChangeEvent {
         change_events.MemoryChangeEvent memory = 3;
         change_events.Mount mount = 4;
         change_events.NetworkDevice network_device = 5;
-        change_events.BatteryChangeEvent battery = 6;
-        change_events.SystemInfo system_info = 7;
     }
 }
 
@@ -64,6 +56,9 @@ message ChangeEventBatch {
 
 message InitialStateRequest {
     int64 machine_id = 1;
+    change_events.SystemInfo system_info = 7;
+    // TODO send static data to be stored only once
+    // - CPU Data
 }
 
 message InitialStateResponse {
