@@ -1555,6 +1555,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "machine-uid",
+ "num_cpus",
  "prost 0.10.4",
  "prost-build 0.9.0",
  "prost-types 0.10.1",

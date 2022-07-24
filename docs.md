@@ -10,12 +10,13 @@ RPC Monitoring:
   - [ ] Ensure that machine id is unique by checking the db
 - [ ] Add token authentication middleware
 - [ ] Initial State Transfer
-  - [ ] Transfer static CPU data
-  - [ ] Refactor process_event to only perform one query per event
+  - [x] Transfer static CPU data
+  - [x] Refactor process_event to only perform one query per event
+  - [ ] Assemble and return data in db to machine
 - [ ] Refactor to compile-time sqlx queries
   - [ ] Refactor `sqlx::query` to `sqlx::query!`
   - [ ] Automatic start of localsetup if not already running
-  - [ ] Refactor individual updates into something separate
+  - [ ] Refactor individual updates into own functions
 - [ ] ? Register a new machine if not exists
 
 General:
@@ -25,6 +26,8 @@ General:
   - [ ] Refactor side-effects to beginning of program
   - [ ] Add tests for individual parts
 - [ ] Logging framework
+- [ ] Refactoring
+  - [ ] Reorganize code
 
 ## Edge-Cases
 

@@ -5,6 +5,10 @@ import "google/protobuf/empty.proto";
 
 package change_events;
 
+message CpuInfo {
+    int64 n_cores = 1;
+}
+
 message CpuChangeEvent {
     float usage = 1;
     float temp = 2;
@@ -42,10 +46,10 @@ enum EventType {
 message ChangeEvent {
     EventType event_type = 1;
     oneof event {
-        change_events.CpuChangeEvent cpu = 2;
-        change_events.MemoryChangeEvent memory = 3;
-        change_events.Mount mount = 4;
-        change_events.NetworkDevice network_device = 5;
+        CpuChangeEvent cpu = 2;
+        MemoryChangeEvent memory = 3;
+        Mount mount = 4;
+        NetworkDevice network_device = 5;
     }
 }
 
@@ -56,9 +60,8 @@ message ChangeEventBatch {
 
 message InitialStateRequest {
     int64 machine_id = 1;
-    change_events.SystemInfo system_info = 7;
-    // TODO send static data to be stored only once
-    // - CPU Data
+    SystemInfo system_info = 7;
+    CpuInfo cpu_info = 2;
 }
 
 message InitialStateResponse {

@@ -55,11 +55,33 @@ impl EventService for MetricService {
 
     async fn initial_state(
         &self,
-        _request: tonic::Request<InitialStateRequest>,
+        request: tonic::Request<InitialStateRequest>,
     ) -> Result<tonic::Response<InitialStateResponse>, tonic::Status> {
         // TODO
         // retrieve initial state data
         // store initial data submitted
+
+        let payload = request.into_inner();
+
+        match payload.system_info {
+            Some(system_info) => {
+                self.db
+                    .save_system_info(payload.machine_id, &system_info)
+                    .await;
+            }
+            None => {
+                eprintln!("Initial request misses system info");
+            }
+        };
+
+        match payload.cpu_info {
+            Some(cpu_info) => {
+                self.db.save_cpu_info(payload.machine_id, &cpu_info).await;
+            }
+            None => {
+                eprintln!("Initial request misses cpu info");
+            }
+        };
 
         Ok(tonic::Response::new(InitialStateResponse::default()))
     }

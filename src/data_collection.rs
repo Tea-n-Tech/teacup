@@ -1,3 +1,4 @@
+extern crate num_cpus;
 extern crate systemstat;
 extern crate tokio;
 
@@ -160,20 +161,6 @@ pub async fn collect_events(
                 }
             }
 
-            // System
-            // match get_system_info(sys).await {
-            //     Ok(system_info) => {
-            //         let system_change_event = proto::ChangeEvent {
-            //             event: Some(proto::change_event::Event::SystemInfo(system_info)),
-            //             event_type: proto::EventType::Update.into(),
-            //         };
-            //         events.push(system_change_event);
-            //     }
-            //     Err(e) => {
-            //         eprintln!("Error getting system info: {:?}", e);
-            //     }
-            // }
-
             // Send stuff to the server
             match tx
                 .send(proto::ChangeEventBatch { machine_id, events })
@@ -190,6 +177,34 @@ pub async fn collect_events(
     match forever.await {
         Ok(_) => {}
         Err(e) => println!("Error collecting events: {}", e),
+    }
+}
+
+pub async fn get_initial_state(machine_id: i64) -> proto::InitialStateRequest {
+    let sys = System::new();
+
+    proto::InitialStateRequest {
+        machine_id,
+        system_info: Some(get_system_info(&sys).await),
+        cpu_info: Some(get_cpu_info().await),
+    }
+}
+
+async fn get_cpu_info() -> proto::CpuInfo {
+    let n_logical_cpus = num_cpus::get();
+    let n_logical_cpus_i64 = match i64::try_from(n_logical_cpus) {
+        Ok(n) => n,
+        Err(err) => {
+            eprintln!(
+                "Error converting cpu count '{}' from usize to i64: {:?}",
+                n_logical_cpus, err
+            );
+            0
+        }
+    };
+
+    proto::CpuInfo {
+        n_cores: n_logical_cpus_i64,
     }
 }
 

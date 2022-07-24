@@ -47,7 +47,6 @@ EXECUTE PROCEDURE trigger_set_timestamp();
 CREATE TABLE IF NOT EXISTS cpu (
     machine_id BIGINT PRIMARY KEY,
     n_cores INTEGER,
-    model TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
