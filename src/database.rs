@@ -57,10 +57,9 @@ impl Database for PgDatabase {
                         .execute(&self.pool)
                         .await
                         {
-                            Ok(_) => println!("Inserted CPU data"),
+                            Ok(_) => println!("Updated database"),
                             Err(err) => {
-                                eprintln!("Failed to insert CPU event: {}", err);
-                                return;
+                                eprintln!("Failed to update database: {}", err);
                             }
                         }
 
@@ -77,10 +76,9 @@ impl Database for PgDatabase {
                         .execute(&self.pool)
                         .await
                         {
-                            Ok(_) => println!("Inserted CPU statistics"),
+                            Ok(_) => println!("Updated database"),
                             Err(err) => {
-                                eprintln!("Failed to insert CPU event: {}", err);
-                                return;
+                                eprintln!("Failed to update database: {}", err);
                             }
                         }
                     }
@@ -97,9 +95,9 @@ impl Database for PgDatabase {
                         .execute(&self.pool)
                         .await
                         {
-                            Ok(_) => println!("Inserted memory data"),
+                            Ok(_) => println!("Updated database"),
                             Err(err) => {
-                                eprintln!("Failed to insert memory event: {}", err);
+                                eprintln!("Failed to update database: {}", err);
                             }
                         }
                     }
@@ -138,13 +136,50 @@ impl Database for PgDatabase {
                         };
 
                         match query.execute(&self.pool).await {
-                            Ok(_) => println!("Inserted or updated mount"),
+                            Ok(_) => println!("Updated database"),
                             Err(err) => {
-                                eprintln!("Failed to insert mount event: {}", err);
+                                eprintln!("Failed to update database: {}", err);
                             }
                         };
                     }
-                    Event::NetworkDevice(net_device) => {}
+                    Event::NetworkDevice(net_device) => {
+                        let query = match event_type {
+                            EventType::Add | EventType::Update => sqlx::query(
+                                "
+                                INSERT INTO network_device_statistics (
+                                    machine_id, device_name, 
+                                    butes_received, bytes_sent
+                                ) 
+                                VALUES ($1, $2, $3, $4)
+                                ON CONFLICT (machine_id, device_name) DO UPDATE SET
+                                    device_name = $2,
+                                    butes_received = $3,
+                                    bytes_sent = $4
+                                    ",
+                            )
+                            .bind(event_batch.machine_id)
+                            .bind(&net_device.name)
+                            .bind(u64_to_i64(net_device.bytes_received))
+                            .bind(u64_to_i64(net_device.bytes_sent)),
+
+                            EventType::Delete => sqlx::query(
+                                "
+                                DELETE FROM network_device_statistics WHERE
+                                    machine_id = $1 AND
+                                    device_name = $2
+                                ",
+                            )
+                            .bind(event_batch.machine_id)
+                            .bind(&net_device.name),
+                        };
+
+                        match query.execute(&self.pool).await {
+                            Ok(_) => println!("Updated database"),
+                            Err(err) => {
+                                eprintln!("Failed to update database: {}", err);
+                            }
+                        };
+                    }
                 },
                 None => {}
             }

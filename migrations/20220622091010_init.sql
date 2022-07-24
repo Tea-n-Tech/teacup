@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS machines (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX machine_user_index on machines (user_id);
+CREATE INDEX machine_user_index
+    ON machines (user_id);
 
 CREATE TRIGGER set_timestamp
 BEFORE UPDATE ON machines
@@ -51,7 +52,8 @@ CREATE TABLE IF NOT EXISTS cpu (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX cpu_machine_index on cpu (machine_id);
+CREATE INDEX cpu_machine_index
+    ON cpu (machine_id);
 
 CREATE TRIGGER set_timestamp
 BEFORE UPDATE ON cpu
@@ -68,7 +70,8 @@ CREATE TABLE IF NOT EXISTS cpu_statistics (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX cpu_statistics_machine_index on cpu_statistics (machine_id);
+CREATE INDEX cpu_statistics_machine_index
+    ON cpu_statistics (machine_id);
 
 -- Mounts
 CREATE TABLE IF NOT EXISTS mounts (
@@ -79,11 +82,19 @@ CREATE TABLE IF NOT EXISTS mounts (
     total BIGINT NOT NULL,
     free BIGINT NOT NULL,
     fs_type TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX mounts_machine_index on mounts (machine_id);
-CREATE UNIQUE INDEX mounts_index on mounts (machine_id, device_name);
+CREATE INDEX mounts_machine_index
+    ON mounts (machine_id);
+CREATE UNIQUE INDEX mounts_index
+    ON mounts (machine_id, device_name);
+
+CREATE TRIGGER set_timestamp
+    BEFORE UPDATE ON mounts
+    FOR EACH ROW
+    EXECUTE PROCEDURE trigger_set_timestamp();
 
 -- Memory
 CREATE TABLE IF NOT EXISTS memory_statistics (
@@ -94,12 +105,40 @@ CREATE TABLE IF NOT EXISTS memory_statistics (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX memory_statistics_machine_index on memory_statistics (machine_id);
+CREATE INDEX memory_statistics_machine_index
+    ON memory_statistics (machine_id);
 
 -- System Info
 CREATE TABLE IF NOT EXISTS system_info (
     id BIGSERIAL PRIMARY KEY,
     machine_id BIGINT NOT NULL,
     boot_time TIMESTAMPTZ NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX system_info_machine_index
+    ON system_info (machine_id);
+
+CREATE TRIGGER set_timestamp
+    BEFORE UPDATE ON system_info
+    FOR EACH ROW
+    EXECUTE PROCEDURE trigger_set_timestamp();
+
+-- Network Devices
+CREATE TABLE IF NOT EXISTS network_device_statistics (
+    machine_id BIGINT NOT NULL,
+    device_name TEXT NOT NULL,
+    butes_received BIGINT NOT NULL,
+    bytes_sent BIGINT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX network_device_statistics_index 
+    ON network_device_statistics (machine_id, device_name);
+
+CREATE TRIGGER set_timestamp
+    BEFORE UPDATE ON network_device_statistics
+    FOR EACH ROW
+    EXECUTE PROCEDURE trigger_set_timestamp();
