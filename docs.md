@@ -4,17 +4,26 @@
 
 RPC Monitoring:
 
-- [ ] Register a new machine if not exists
-- [ ] Use an 8 byte machine id
-- Machine id
+- [ ] Machine id
   - [x] Autogenerate 8 byte machine id
   - [x] Store it locally so that users may transfer or change it
   - [ ] Ensure that machine id is unique by checking the db
 - [ ] Add token authentication middleware
+- [ ] Initial State Transfer
+  - [ ] Transfer static CPU data
+  - [ ] Refactor process_event to only perform one query per event
+- [ ] Refactor to compile-time sqlx queries
+  - [ ] Refactor `sqlx::query` to `sqlx::query!`
+  - [ ] Automatic start of localsetup if not already running
+  - [ ] Refactor individual updates into something separate
+- [ ] ? Register a new machine if not exists
 
 General:
 
 - [ ] Test strategy
+  - [ ] Introduce traits for testing
+  - [ ] Refactor side-effects to beginning of program
+  - [ ] Add tests for individual parts
 - [ ] Logging framework
 
 ## Edge-Cases
