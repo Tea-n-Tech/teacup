@@ -109,8 +109,7 @@ CREATE INDEX memory_statistics_machine_index
 
 -- System Info
 CREATE TABLE IF NOT EXISTS system_info (
-    id BIGSERIAL PRIMARY KEY,
-    machine_id BIGINT NOT NULL,
+    machine_id BIGINT NOT NULL PRIMARY KEY,
     boot_time TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -128,7 +127,7 @@ CREATE TRIGGER set_timestamp
 CREATE TABLE IF NOT EXISTS network_device_statistics (
     machine_id BIGINT NOT NULL,
     device_name TEXT NOT NULL,
-    butes_received BIGINT NOT NULL,
+    bytes_received BIGINT NOT NULL,
     bytes_sent BIGINT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

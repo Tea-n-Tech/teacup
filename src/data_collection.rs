@@ -271,8 +271,8 @@ async fn get_ram_info(sys: &impl Platform) -> Result<proto::MemoryChangeEvent, s
             //     .for_each(|x| println!("{}: {}", x.0, x.1));
 
             Ok(proto::MemoryChangeEvent {
-                free: mem.free.as_u64(),
-                total: mem.total.as_u64(),
+                free: u64_to_i64(mem.free.as_u64()),
+                total: u64_to_i64(mem.total.as_u64()),
             })
         }
         Err(x) => {
@@ -301,8 +301,8 @@ async fn get_disk_info(
                         proto::Mount {
                             device_name: fs.fs_mounted_from.clone(),
                             mount_location: fs.fs_mounted_on.clone(),
-                            free: fs.avail.as_u64(),
-                            total: fs.total.as_u64(),
+                            free: u64_to_i64(fs.avail.as_u64()),
+                            total: u64_to_i64(fs.total.as_u64()),
                             fs_type: fs.fs_type.clone(),
                         },
                     )
@@ -356,8 +356,8 @@ async fn get_network_stats(
                         name.clone(),
                         proto::NetworkDevice {
                             name: name.clone(),
-                            bytes_received: network.rx_bytes.as_u64(),
-                            bytes_sent: network.tx_bytes.as_u64(),
+                            bytes_received: u64_to_i64(network.rx_bytes.as_u64()),
+                            bytes_sent: u64_to_i64(network.tx_bytes.as_u64()),
                         },
                     )
                 })
@@ -367,6 +367,19 @@ async fn get_network_stats(
         Err(err) => {
             eprintln!("Network load: error: {}", err);
             Err(err)
+        }
+    }
+}
+
+fn u64_to_i64(number: u64) -> i64 {
+    match i64::try_from(number) {
+        Ok(number) => number,
+        Err(err) => {
+            // It is important to see in the logs how often this
+            // occurs. Unfortunately, sqlx does not support u64
+            // so there is not much we can do here.
+            eprintln!("Failed to convert u64 {} to i64: {}", number, err);
+            0
         }
     }
 }

@@ -9,10 +9,10 @@ RPC Monitoring:
   - [x] Store it locally so that users may transfer or change it
   - [ ] Ensure that machine id is unique by checking the db
 - [ ] Add token authentication middleware
-- [ ] Initial State Transfer
+- [X] Initial State Transfer
   - [x] Transfer static CPU data
   - [x] Refactor process_event to only perform one query per event
-  - [ ] Assemble and return data in db to machine
+  - [X] Assemble and return data in db to machine
 - [ ] Refactor to compile-time sqlx queries
   - [ ] Refactor `sqlx::query` to `sqlx::query!`
   - [ ] Automatic start of localsetup if not already running

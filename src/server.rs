@@ -57,12 +57,9 @@ impl EventService for MetricService {
         &self,
         request: tonic::Request<InitialStateRequest>,
     ) -> Result<tonic::Response<InitialStateResponse>, tonic::Status> {
-        // TODO
-        // retrieve initial state data
-        // store initial data submitted
-
         let payload = request.into_inner();
 
+        // Store system info which does not change over time
         match payload.system_info {
             Some(system_info) => {
                 self.db
@@ -74,6 +71,7 @@ impl EventService for MetricService {
             }
         };
 
+        // Store cpu info which does not change over time
         match payload.cpu_info {
             Some(cpu_info) => {
                 self.db.save_cpu_info(payload.machine_id, &cpu_info).await;
@@ -83,7 +81,34 @@ impl EventService for MetricService {
             }
         };
 
-        Ok(tonic::Response::new(InitialStateResponse::default()))
+        // Fetch mounts so client sends us just updates
+        let mounts = match self.db.fetch_mounts(payload.machine_id).await {
+            Ok(mounts) => mounts,
+            Err(e) => {
+                eprintln!("Failed to fetch mounts from database: {}", e);
+                return Err(tonic::Status::new(
+                    tonic::Code::Internal,
+                    "Failed to fetch mounts from database.",
+                ));
+            }
+        };
+
+        // Fetch mounts so client sends us just updates
+        let network_devices = match self.db.fetch_network_devices(payload.machine_id).await {
+            Ok(network_devices) => network_devices,
+            Err(e) => {
+                eprintln!("Failed to fetch network devices from database: {}", e);
+                return Err(tonic::Status::new(
+                    tonic::Code::Internal,
+                    "Failed to fetch network devices from database.",
+                ));
+            }
+        };
+
+        Ok(tonic::Response::new(InitialStateResponse {
+            mounts,
+            network_devices,
+        }))
     }
 }
 
