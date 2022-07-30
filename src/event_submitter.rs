@@ -11,16 +11,29 @@ use systemstat::{Platform, System};
 
 use tokio::sync::mpsc;
 use tonic::codegen::InterceptedService;
-use tonic::metadata::MetadataValue;
+use tonic::metadata::{Ascii, MetadataValue};
+use tonic::service::Interceptor;
 use tonic::transport::Channel;
 use tonic::{Request, Status};
 
 use crate::event_submitter::data_collection::{get_initial_state, get_system_info};
 use crate::ClientCli;
 
+struct InsertAuthTokenInterceptor {
+    token: MetadataValue<Ascii>,
+}
+
+impl Interceptor for InsertAuthTokenInterceptor {
+    fn call(&mut self, mut request: tonic::Request<()>) -> Result<tonic::Request<()>, Status> {
+        request
+            .metadata_mut()
+            .insert("authorization", self.token.clone());
+        Ok(request)
+    }
+}
+
 pub struct EventSubmitter {
-    client: EventServiceClient<Channel>,
-    // client: EventServiceClient<InterceptedService<Channel, ()>>,
+    client: EventServiceClient<InterceptedService<Channel, InsertAuthTokenInterceptor>>,
     submission_handler: Option<tokio::task::JoinHandle<()>>,
     machine_id: i64,
 }
@@ -37,26 +50,19 @@ impl Drop for EventSubmitter {
 }
 
 impl EventSubmitter {
-    pub async fn new(cli: ClientCli, machine_id: i64) -> Self {
+    pub async fn new(cli: ClientCli, machine_id: i64, token: String) -> Self {
         let channel = Channel::from_shared(format!("{}:{}", cli.address, cli.port).to_string())
             .expect("Invalid server address")
             .connect()
             .await
             .expect("Error connecting to the server");
 
-        let token: MetadataValue<_> = "Bearer some-auth-token".parse().unwrap();
+        let token_value: MetadataValue<_> = format!("Bearer {}", token).parse().unwrap();
 
-        let event_service =
-            EventServiceClient::connect(format!("{}:{}", cli.address, cli.port).to_string())
-                .await
-                .expect("Cannot connect to server");
-
-        // let abc = move |mut req: Request<()>| {
-        //     req.metadata_mut().insert("authorization", token.clone());
-        //     Ok(req)
-        // };
-
-        // let event_service = EventServiceClient::with_interceptor(channel, abc);
+        let event_service = EventServiceClient::with_interceptor(
+            channel,
+            InsertAuthTokenInterceptor { token: token_value },
+        );
 
         Self {
             client: event_service,
