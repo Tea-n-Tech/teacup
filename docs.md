@@ -27,6 +27,7 @@ General:
   - [ ] Add tests for individual parts
 - [ ] Logging framework
 - [ ] Refactoring
+  - [x] Put code into own crates
   - [ ] Reorganize code
 
 ## Edge-Cases
@@ -44,3 +45,9 @@ General:
 - Use streaming for monitoring
   - Let server ping the client?
   - Performance impact many streaming connection?
+    - 40 kB memory per channel
+    - 80 kB max recommended payload
+    - no bidirectional stream recommended since keeping many connections open
+      is worse than doing a handshale every X minutes
+    - unary streaming is an option for testing
+  - Try eBPF for measurements if possible
