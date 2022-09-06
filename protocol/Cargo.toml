@@ -1,0 +1,18 @@
+[package]
+name = "protocol"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# grpc and protobuf
+tonic = "0.7"
+prost = "0.10"
+prost-types = "0.10"
+
+# database interface
+sqlx = { version = "0.5", features = [ "runtime-tokio-rustls","postgres"] }
+
+[build-dependencies]
+prost-build = { version = "0.9" }
+tonic-build = "0.7"
+

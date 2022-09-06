@@ -1,0 +1,28 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]] # Bin to run the gRPC server
+name = "server"
+path = "src/main.rs"
+
+[dependencies]
+# own protocols
+protocol = { path = "../protocol" }
+
+# grpc stuff
+tonic = "0.7"
+
+# Support for async methods in traits
+async-trait = "0.1.56"
+
+# async runtime
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
+
+# command line interface
+clap = { version = "3.2.1", features = ["derive"] }
+
+# database interface
+sqlx = { version = "0.5", features = [ "runtime-tokio-rustls","postgres"] }

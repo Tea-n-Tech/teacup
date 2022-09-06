@@ -1,9 +1,9 @@
 extern crate num_cpus;
+extern crate protocol as proto;
 extern crate systemstat;
 extern crate tokio;
 
 use std::collections::HashMap;
-use std::hash::Hash;
 
 use prost_types::Timestamp;
 use systemstat::Platform;
@@ -11,42 +11,7 @@ use systemstat::System;
 use tokio::sync::mpsc;
 use tokio::time;
 
-pub mod proto {
-    #![allow(unreachable_pub)]
-    #![allow(missing_docs)]
-    tonic::include_proto!("change_events");
-}
-
-pub trait ToEvent {
-    fn to_change_event(&self, event_type: proto::EventType) -> proto::ChangeEvent;
-}
-
-impl ToEvent for proto::NetworkDevice {
-    fn to_change_event(&self, event_type: proto::EventType) -> proto::ChangeEvent {
-        proto::ChangeEvent {
-            event_type: event_type.into(),
-            event: Some(proto::change_event::Event::NetworkDevice(self.clone())),
-        }
-    }
-}
-
-impl ToEvent for proto::Mount {
-    fn to_change_event(&self, event_type: proto::EventType) -> proto::ChangeEvent {
-        proto::ChangeEvent {
-            event_type: event_type.into(),
-            event: Some(proto::change_event::Event::Mount(self.clone())),
-        }
-    }
-}
-
-impl Eq for proto::NetworkDevice {}
-impl Hash for proto::NetworkDevice {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-    }
-}
-
-pub async fn get_change_events<T: ToEvent + std::cmp::PartialEq>(
+pub async fn get_change_events<T: proto::ToEvent + std::cmp::PartialEq>(
     prev_devices: &HashMap<String, T>,
     new_devices: &HashMap<String, T>,
 ) -> Vec<proto::ChangeEvent> {
@@ -265,10 +230,6 @@ async fn get_ram_info(sys: &impl Platform) -> Result<proto::MemoryChangeEvent, s
     match sys.memory() {
         Ok(mem) => {
             println!("Memory Total: {}, Free: {}", mem.total, mem.free);
-            // mem.platform_memory
-            //     .meminfo
-            //     .into_iter()
-            //     .for_each(|x| println!("{}: {}", x.0, x.1));
 
             Ok(proto::MemoryChangeEvent {
                 free: u64_to_i64(mem.free.as_u64()),

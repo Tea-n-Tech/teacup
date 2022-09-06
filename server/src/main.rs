@@ -1,3 +1,5 @@
+extern crate protocol as proto;
+
 mod database;
 use std::{net::SocketAddr, sync::Arc};
 
@@ -9,12 +11,6 @@ use self::proto::{
     event_service_server::EventService, event_service_server::EventServiceServer, ChangeEventBatch,
     InitialStateRequest, InitialStateResponse,
 };
-
-pub mod proto {
-    #![allow(unreachable_pub)]
-    #![allow(missing_docs)]
-    tonic::include_proto!("change_events");
-}
 
 #[derive(Parser, Debug, Clone)]
 #[clap(author, version, about, long_about = None)]

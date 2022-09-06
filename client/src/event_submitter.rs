@@ -1,23 +1,17 @@
-#[path = "./data_collection.rs"]
-mod data_collection;
-#[path = "./local_settings.rs"]
-mod local_settings;
+extern crate protocol as proto;
 
-use std::fmt::format;
+use crate::ClientCli;
 
-use data_collection::proto::event_service_client::EventServiceClient;
-use data_collection::proto::InitialStateRequest;
-use systemstat::{Platform, System};
+use proto::event_service_client::EventServiceClient;
+
+use core::get_initial_state;
 
 use tokio::sync::mpsc;
 use tonic::codegen::InterceptedService;
 use tonic::metadata::{Ascii, MetadataValue};
 use tonic::service::Interceptor;
 use tonic::transport::Channel;
-use tonic::{Request, Status};
-
-use crate::event_submitter::data_collection::{get_initial_state, get_system_info};
-use crate::ClientCli;
+use tonic::Status;
 
 struct InsertAuthTokenInterceptor {
     token: MetadataValue<Ascii>,
@@ -92,7 +86,7 @@ impl EventSubmitter {
     }
 
     async fn submit_events(&mut self) -> Result<(), ()> {
-        let (tx, mut rx) = mpsc::channel::<data_collection::proto::ChangeEventBatch>(32);
+        let (tx, mut rx) = mpsc::channel::<proto::ChangeEventBatch>(32);
 
         println!("Fetching initial state");
         let initial_state_result = self
@@ -112,7 +106,7 @@ impl EventSubmitter {
         // collect data indefinitely and send data to the channel
         let machine_id_clone = self.machine_id.clone();
         self.submission_handler = Some(tokio::task::spawn(async move {
-            data_collection::collect_events(tx, initial_state, machine_id_clone).await;
+            core::collect_events(tx, initial_state, machine_id_clone).await;
         }));
 
         loop {

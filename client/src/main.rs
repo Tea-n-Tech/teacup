@@ -1,15 +1,14 @@
+extern crate core;
+
 // mod
 mod env;
 mod event_submitter;
-mod local_settings;
 
 use clap::Parser;
+use core::{get_settings_filepath, load_settings};
 use env::get_api_token;
 use event_submitter::EventSubmitter;
-use local_settings::{get_settings_filepath, load_settings};
-use tonic::metadata::MetadataValue;
-
-extern crate machine_uid;
+// use tonic::metadata::MetadataValue;
 
 #[derive(Parser, Debug, Clone)]
 #[clap(author, version, about, long_about = None)]

@@ -1,0 +1,31 @@
+[package]
+name = "client"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]] # Bin to run the gRPC client
+name = "client"
+path = "src/main.rs"
+
+[dependencies]
+# core functions
+core = { path = "../core" }
+
+# own protocols
+protocol = { path = "../protocol" }
+
+# grpc stuff
+tonic = "0.7"
+prost = "0.10"
+prost-types = "0.10"
+
+# async runtime
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
+
+# command line interface
+clap = { version = "3.2.1", features = ["derive"] }
+
+# system data collection 
+# TODO should not be here anymore
+systemstat = "0.1.10"
