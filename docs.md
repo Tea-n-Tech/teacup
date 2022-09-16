@@ -52,4 +52,4 @@ General:
     - unary streaming is an option for testing
     - no bidir streaming since keeping many different connections open is
       definitely worse than performing a handshake every X minutes
-  - Try eBPF for measurements if possible?
+- Try eBPF for measurements if possible?
