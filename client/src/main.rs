@@ -25,11 +25,10 @@ pub struct ClientCli {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = ClientCli::parse();
     eprintln!("Cli config: {:?}", &cli);
+    let api_token = get_api_token();
 
     let settings_filepath = get_settings_filepath().await;
     let settings = load_settings(&settings_filepath).await;
-
-    let api_token = get_api_token();
 
     // receive change events from a channel and send them to the
     // server.
@@ -46,7 +45,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     match send_handler.await {
-        Ok(_) => {}
+        Ok(_) => {
+            // graceful termination
+        }
         Err(e) => {
             eprintln!("Error sending events: {:?}", e);
         }
