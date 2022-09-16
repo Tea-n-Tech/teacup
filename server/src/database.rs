@@ -1,15 +1,13 @@
 extern crate protocol as proto;
 
-use std::fmt::Debug;
-
-use crate::proto::ChangeEventBatch;
-
-use super::proto::{change_event::Event, CpuInfo, EventType, Mount, NetworkDevice, SystemInfo};
-
+use self::proto::{
+    change_event::Event, ChangeEventBatch, CpuInfo, EventType, Mount, NetworkDevice, SystemInfo,
+};
 use async_trait::async_trait;
 use sqlx::error::Error;
 use sqlx::pool::Pool;
 use sqlx::postgres::{PgPoolOptions, Postgres};
+use std::fmt::Debug;
 
 #[async_trait]
 pub trait Database: Sync + Send + Debug {
@@ -41,7 +39,7 @@ impl PgDatabase {
 impl Database for PgDatabase {
     async fn process_event(&self, event_batch: &ChangeEventBatch) {
         for event in event_batch.events.iter() {
-            println!("Got event: {:?}", event);
+            eprintln!("Got event: {:?}", event);
 
             let event_type = event.event_type();
             let query = match &event.event {
@@ -137,7 +135,7 @@ impl Database for PgDatabase {
             };
 
             match query.execute(&self.pool).await {
-                Ok(_) => println!("Updated database"),
+                Ok(_) => eprintln!("Updated database"),
                 Err(err) => {
                     eprintln!("Failed to update database: {}", err);
                 }
@@ -165,7 +163,7 @@ impl Database for PgDatabase {
         .execute(&self.pool)
         .await
         {
-            Ok(_) => println!("Inserted system info"),
+            Ok(_) => eprintln!("Inserted system info"),
             Err(err) => {
                 eprintln!("Failed to insert system info event: {}", err);
             }
@@ -186,7 +184,7 @@ impl Database for PgDatabase {
         .execute(&self.pool)
         .await
         {
-            Ok(_) => println!("Updated database"),
+            Ok(_) => eprintln!("Updated database"),
             Err(err) => {
                 eprintln!("Failed to update database: {}", err);
             }

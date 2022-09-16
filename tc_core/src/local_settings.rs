@@ -4,8 +4,8 @@ extern crate xdg;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::fs;
 use std::path::PathBuf;
+use std::{env, fs};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LocalSettings {
@@ -34,7 +34,8 @@ pub async fn load_settings(config_path: &PathBuf) -> LocalSettings {
             let settings = LocalSettings {
                 machine_id: generate_machine_id().await,
             };
-            fs::write(config_path, serde_json::to_string(&settings).unwrap())
+            tokio::fs::write(config_path, serde_json::to_string(&settings).unwrap())
+                .await
                 .expect("Could not write config file with required settings");
 
             settings
@@ -63,4 +64,8 @@ async fn generate_machine_id() -> i64 {
             rng.gen::<i64>()
         }
     }
+}
+
+pub fn get_env_var_or_panic(env_name: &str) -> String {
+    env::var(env_name).expect(format!("{} env var is not set", env_name).as_str())
 }

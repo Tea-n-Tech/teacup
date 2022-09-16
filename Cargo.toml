@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-    "core",
+    "tc_core",
     "protocol",
     "server",
     "client",

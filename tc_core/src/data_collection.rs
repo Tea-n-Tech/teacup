@@ -141,7 +141,7 @@ pub async fn collect_events(
 
     match forever.await {
         Ok(_) => {}
-        Err(e) => println!("Error collecting events: {}", e),
+        Err(e) => eprintln!("Error collecting events: {}", e),
     }
 }
 
@@ -181,13 +181,13 @@ async fn get_cpu_update_event(
 
     match sys.cpu_load_aggregate() {
         Ok(cpu) => {
-            println!("Measuring CPU load...");
+            eprintln!("Measuring CPU load...");
 
             tokio::time::sleep(time::Duration::from_secs(1)).await;
 
             match cpu.done() {
                 Ok(cpu_load) => {
-                    println!(
+                    eprintln!(
                         "CPU load: {}% user, {}% nice, {}% system, {}% intr, {}% idle ",
                         cpu_load.user * 100.0,
                         cpu_load.nice * 100.0,
@@ -211,7 +211,7 @@ async fn get_cpu_update_event(
 
     match sys.cpu_temp() {
         Ok(cpu_temp) => {
-            println!("CPU temp: {}", cpu_temp);
+            eprintln!("CPU temp: {}", cpu_temp);
             temp = cpu_temp;
         }
         Err(x) => {
@@ -229,7 +229,7 @@ async fn get_cpu_update_event(
 async fn get_ram_info(sys: &impl Platform) -> Result<proto::MemoryChangeEvent, std::io::Error> {
     match sys.memory() {
         Ok(mem) => {
-            println!("Memory Total: {}, Free: {}", mem.total, mem.free);
+            eprintln!("Memory Total: {}, Free: {}", mem.total, mem.free);
 
             Ok(proto::MemoryChangeEvent {
                 free: u64_to_i64(mem.free.as_u64()),
@@ -249,7 +249,7 @@ async fn get_disk_info(
     match sys.mounts() {
         Ok(mounts) => {
             mounts.iter().for_each(|fs| {
-                println!(
+                eprintln!(
                     "{} -> {} ({}) {}/{} free",
                     fs.fs_mounted_from, fs.fs_mounted_on, fs.fs_type, fs.avail, fs.total
                 )
@@ -282,7 +282,7 @@ pub async fn get_system_info(sys: &impl Platform) -> proto::SystemInfo {
     let mut boot_time: i64 = 0;
     match sys.boot_time() {
         Ok(new_boot_time) => {
-            println!("Boot Time: {}", new_boot_time);
+            eprintln!("Boot Time: {}", new_boot_time);
             boot_time = new_boot_time.timestamp();
         }
         Err(x) => {
@@ -309,7 +309,7 @@ async fn get_network_stats(
                 .map(|network| network.0)
                 .map(|name| {
                     let network = sys.network_stats(name).unwrap();
-                    println!(
+                    eprintln!(
                         "{}: sent: {}, recv: {}",
                         name, network.tx_bytes, network.rx_bytes
                     );

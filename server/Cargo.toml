@@ -11,6 +11,9 @@ path = "src/main.rs"
 # own protocols
 protocol = { path = "../protocol" }
 
+# core functions
+tc_core = { path = "../tc_core" }
+
 # grpc stuff
 tonic = "0.7"
 

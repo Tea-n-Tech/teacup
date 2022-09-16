@@ -243,11 +243,11 @@ name = "client"
 version = "0.1.0"
 dependencies = [
  "clap",
- "core",
  "prost 0.10.4",
  "prost-types 0.10.1",
  "protocol",
  "systemstat",
+ "tc_core",
  "tokio",
  "tokio-stream",
  "tonic",
@@ -260,24 +260,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8ad8cef104ac57b68b89df3208164d228503abbdce70f6880ffa3d970e7443a"
 dependencies = [
  "cc",
-]
-
-[[package]]
-name = "core"
-version = "0.1.0"
-dependencies = [
- "machine-uid",
- "num_cpus",
- "prost-types 0.10.1",
- "protocol",
- "rand 0.7.3",
- "serde",
- "serde_json",
- "sha2",
- "systemstat",
- "tokio",
- "tokio-stream",
- "xdg",
 ]
 
 [[package]]
@@ -1356,6 +1338,7 @@ dependencies = [
  "clap",
  "protocol",
  "sqlx",
+ "tc_core",
  "tokio",
  "tokio-stream",
  "tonic",
@@ -1577,6 +1560,24 @@ dependencies = [
  "libc",
  "nom",
  "winapi",
+]
+
+[[package]]
+name = "tc_core"
+version = "0.1.0"
+dependencies = [
+ "machine-uid",
+ "num_cpus",
+ "prost-types 0.10.1",
+ "protocol",
+ "rand 0.7.3",
+ "serde",
+ "serde_json",
+ "sha2",
+ "systemstat",
+ "tokio",
+ "tokio-stream",
+ "xdg",
 ]
 
 [[package]]

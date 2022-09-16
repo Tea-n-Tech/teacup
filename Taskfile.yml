@@ -6,20 +6,32 @@ dotenv:
 tasks:
   server:
     desc: Start the server receiving data
+    env:
+      TEACUP_DB_USER: teacup
+      TEACUP_DB_PW: teacup
     cmds:
       - cargo run --bin server
 
   client:
     desc: Start the client sending telemetry
+    env:
+      TEACUP_TOKEN: pewpew
     cmds:
       - cargo run --bin client
+
+  setup-db:
+    desc: Runs the database migration scripts such as creating tables
+    dir: server
+    cmds:
+      # allow longer timeout since by default 10 is a bit short for docker
+      - sqlx database create --connect-timeout 30
+      - sqlx migrate run
 
   start-localsetup:
     desc: Setup the local environment
     cmds:
       - docker-compose up -d
-      - sqlx database create
-      - sqlx migrate run
+      - task: setup-db
 
   stop-localsetup:
     desc: Stop the local environment

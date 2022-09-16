@@ -4,7 +4,7 @@ use crate::ClientCli;
 
 use proto::event_service_client::EventServiceClient;
 
-use core::get_initial_state;
+use tc_core::get_initial_state;
 
 use tokio::sync::mpsc;
 use tonic::codegen::InterceptedService;
@@ -77,7 +77,8 @@ impl EventSubmitter {
                     // reason.
                 }
                 Err(_) => {
-                    println!("Waiting 5 seconds before trying again.");
+                    // TODO return an error and log it here
+                    eprintln!("Waiting 5 seconds before trying again.");
                     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                 }
             }
@@ -88,7 +89,7 @@ impl EventSubmitter {
     async fn submit_events(&mut self) -> Result<(), ()> {
         let (tx, mut rx) = mpsc::channel::<proto::ChangeEventBatch>(32);
 
-        println!("Fetching initial state");
+        eprintln!("Fetching initial state");
         let initial_state_result = self
             .client
             .initial_state(tonic::Request::new(
@@ -101,22 +102,22 @@ impl EventSubmitter {
         }
 
         let initial_state = initial_state_result.unwrap().into_inner();
-        println!("Got initial state: {:?}", initial_state);
+        eprintln!("Got initial state: {:?}", initial_state);
 
         // collect data indefinitely and send data to the channel
         let machine_id_clone = self.machine_id.clone();
         self.submission_handler = Some(tokio::task::spawn(async move {
-            core::collect_events(tx, initial_state, machine_id_clone).await;
+            tc_core::collect_events(tx, initial_state, machine_id_clone).await;
         }));
 
         loop {
             match rx.recv().await {
                 Some(event_batch) => {
-                    println!("Sending events {:?}", event_batch);
+                    eprintln!("Sending events {:?}", event_batch);
                     let request = tonic::Request::new(event_batch);
                     match self.client.send_events(request).await {
                         Ok(response) => {
-                            println!("RESPONSE={:?}", response);
+                            eprintln!("RESPONSE={:?}", response);
                         }
                         Err(e) => {
                             eprintln!("Error sending events: {:?}", e);

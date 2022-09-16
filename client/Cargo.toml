@@ -9,7 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 # core functions
-core = { path = "../core" }
+tc_core = { path = "../tc_core" }
 
 # own protocols
 protocol = { path = "../protocol" }

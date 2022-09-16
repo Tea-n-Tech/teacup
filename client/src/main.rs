@@ -5,9 +5,9 @@ mod env;
 mod event_submitter;
 
 use clap::Parser;
-use core::{get_settings_filepath, load_settings};
 use env::get_api_token;
 use event_submitter::EventSubmitter;
+use tc_core::{get_settings_filepath, load_settings};
 // use tonic::metadata::MetadataValue;
 
 #[derive(Parser, Debug, Clone)]
@@ -24,7 +24,7 @@ pub struct ClientCli {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = ClientCli::parse();
-    println!("Cli config: {:?}", &cli);
+    eprintln!("Cli config: {:?}", &cli);
 
     let settings_filepath = get_settings_filepath().await;
     let settings = load_settings(&settings_filepath).await;
@@ -36,9 +36,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let send_handler = tokio::task::spawn(async move {
         let mut submitter = EventSubmitter::new(cli.clone(), settings.machine_id, api_token).await;
         match submitter.start().await {
-            Ok(_) => {}
+            Ok(_) => {
+                // graceful termination
+            }
             Err(e) => {
-                println!("Error submitting events: {:?}", e);
+                eprintln!("Error submitting events: {:?}", e);
             }
         }
     });
