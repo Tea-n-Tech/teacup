@@ -12,12 +12,27 @@ tasks:
     cmds:
       - cargo run --bin server
 
+  server-release:
+    desc: Start the server receiving monitoring data in release mode
+    env:
+      TEACUP_DB_USER: teacup
+      TEACUP_DB_PW: teacup
+    cmds:
+      - cargo run --bin server --release
+
   client:
     desc: Start the client sending telemetry
     env:
       TEACUP_TOKEN: pewpew
     cmds:
       - cargo run --bin client
+
+  client-release:
+    desc: Start the client sending telemetry in release mode
+    env:
+      TEACUP_TOKEN: pewpew
+    cmds:
+      - cargo run --bin client --release
 
   setup-db:
     desc: Runs the database migration scripts such as creating tables

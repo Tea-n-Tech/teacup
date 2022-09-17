@@ -25,10 +25,12 @@ pub async fn get_change_events<T: proto::ToEvent + std::cmp::PartialEq>(
         let prev_device = prev_devices.get(device_name);
         let new_device = new_devices.get(device_name);
 
+        // new device found -> ADD
         if prev_device.is_none() && new_device.is_some() {
             events.push(new_device.unwrap().to_change_event(proto::EventType::Add));
         }
 
+        // existing device changed -> UPDATE
         if prev_device.is_some() && new_device.is_some() && prev_device != new_device {
             events.push(
                 new_device
@@ -37,6 +39,7 @@ pub async fn get_change_events<T: proto::ToEvent + std::cmp::PartialEq>(
             );
         }
 
+        // old device gone -> DELETE
         if prev_device.is_some() && new_device.is_none() {
             events.push(
                 prev_device
@@ -80,7 +83,7 @@ pub async fn collect_events(
             let mut events: Vec<proto::ChangeEvent> = vec![];
 
             // cpu
-            let cpu_info = get_cpu_update_event(sys).await.unwrap();
+            let cpu_info = get_cpu_update_event(sys).await;
             let cpu_change_event = proto::ChangeEvent {
                 event: Some(proto::change_event::Event::Cpu(cpu_info)),
                 event_type: proto::EventType::Update.into(),
@@ -173,16 +176,14 @@ async fn get_cpu_info() -> proto::CpuInfo {
     }
 }
 
-async fn get_cpu_update_event(
-    sys: &impl Platform,
-) -> Result<proto::CpuChangeEvent, std::io::Error> {
-    let usage: f32;
-    let temp: f32;
+async fn get_cpu_update_event(sys: &impl Platform) -> proto::CpuChangeEvent {
+    // Note: we don't return result here since temp is expected to fail often
+    // since measuring temp is badly supported. Subsequently, this routine
+    // would fail quite a lot, thus we are a bit more forgiving here.
 
-    match sys.cpu_load_aggregate() {
+    let usage = match sys.cpu_load_aggregate() {
         Ok(cpu) => {
-            eprintln!("Measuring CPU load...");
-
+            // Measuring CPU load requires sleeping for a brief moment
             tokio::time::sleep(time::Duration::from_secs(1)).await;
 
             match cpu.done() {
@@ -195,35 +196,32 @@ async fn get_cpu_update_event(
                         cpu_load.interrupt * 100.0,
                         cpu_load.idle * 100.0
                     );
-                    usage = cpu_load.user;
+                    cpu_load.user
                 }
                 Err(e) => {
                     eprintln!("Error: {}", e);
-                    return Err(e);
+                    0.
                 }
             }
         }
         Err(x) => {
             eprintln!("CPU load: error: {}", x);
-            return Err(x);
+            0.
         }
-    }
+    };
 
-    match sys.cpu_temp() {
+    let temp = match sys.cpu_temp() {
         Ok(cpu_temp) => {
             eprintln!("CPU temp: {}", cpu_temp);
-            temp = cpu_temp;
+            cpu_temp
         }
-        Err(x) => {
-            eprintln!("CPU temp: error: {}", x);
-            return Err(x);
+        Err(err) => {
+            eprintln!("CPU temp: error: {}", err);
+            0.
         }
-    }
+    };
 
-    Ok(proto::CpuChangeEvent {
-        temp: temp,
-        usage: usage,
-    })
+    proto::CpuChangeEvent { temp, usage }
 }
 
 async fn get_ram_info(sys: &impl Platform) -> Result<proto::MemoryChangeEvent, std::io::Error> {
@@ -232,8 +230,8 @@ async fn get_ram_info(sys: &impl Platform) -> Result<proto::MemoryChangeEvent, s
             eprintln!("Memory Total: {}, Free: {}", mem.total, mem.free);
 
             Ok(proto::MemoryChangeEvent {
-                free: u64_to_i64(mem.free.as_u64()),
-                total: u64_to_i64(mem.total.as_u64()),
+                free: u64_to_i64_or_default_and_log(mem.free.as_u64()),
+                total: u64_to_i64_or_default_and_log(mem.total.as_u64()),
             })
         }
         Err(x) => {
@@ -246,24 +244,31 @@ async fn get_ram_info(sys: &impl Platform) -> Result<proto::MemoryChangeEvent, s
 async fn get_disk_info(
     sys: &impl Platform,
 ) -> Result<HashMap<String, proto::Mount>, std::io::Error> {
+    // We are only interested in the most common fs types.
+    // I hope I don't exclude anything important 🫣
+    const ALLOWED_MOUNT_TYPES: &[&str] = &["ext", "ntfs", "vfat", "btrfs"];
+
     match sys.mounts() {
         Ok(mounts) => {
-            mounts.iter().for_each(|fs| {
-                eprintln!(
-                    "{} -> {} ({}) {}/{} free",
-                    fs.fs_mounted_from, fs.fs_mounted_on, fs.fs_type, fs.avail, fs.total
-                )
-            });
             let mount_vec = mounts
                 .iter()
+                .filter(|fs| {
+                    ALLOWED_MOUNT_TYPES
+                        .iter()
+                        .any(|name| fs.fs_type.as_str().starts_with(name))
+                })
                 .map(|fs| {
+                    eprintln!(
+                        "{} -> {} ({}) {}/{} free",
+                        fs.fs_mounted_from, fs.fs_mounted_on, fs.fs_type, fs.avail, fs.total
+                    );
                     (
                         fs.fs_mounted_from.clone(),
                         proto::Mount {
                             device_name: fs.fs_mounted_from.clone(),
                             mount_location: fs.fs_mounted_on.clone(),
-                            free: u64_to_i64(fs.avail.as_u64()),
-                            total: u64_to_i64(fs.total.as_u64()),
+                            free: u64_to_i64_or_default_and_log(fs.avail.as_u64()),
+                            total: u64_to_i64_or_default_and_log(fs.total.as_u64()),
                             fs_type: fs.fs_type.clone(),
                         },
                     )
@@ -317,8 +322,10 @@ async fn get_network_stats(
                         name.clone(),
                         proto::NetworkDevice {
                             name: name.clone(),
-                            bytes_received: u64_to_i64(network.rx_bytes.as_u64()),
-                            bytes_sent: u64_to_i64(network.tx_bytes.as_u64()),
+                            bytes_received: u64_to_i64_or_default_and_log(
+                                network.rx_bytes.as_u64(),
+                            ),
+                            bytes_sent: u64_to_i64_or_default_and_log(network.tx_bytes.as_u64()),
                         },
                     )
                 })
@@ -332,13 +339,14 @@ async fn get_network_stats(
     }
 }
 
-fn u64_to_i64(number: u64) -> i64 {
+fn u64_to_i64_or_default_and_log(number: u64) -> i64 {
     match i64::try_from(number) {
         Ok(number) => number,
         Err(err) => {
-            // It is important to see in the logs how often this
-            // occurs. Unfortunately, sqlx does not support u64
+            // Unfortunately, sqlx does not support u64
             // so there is not much we can do here.
+            // It is important to see in the logs how often this
+            // occurs.
             eprintln!("Failed to convert u64 {} to i64: {}", number, err);
             0
         }

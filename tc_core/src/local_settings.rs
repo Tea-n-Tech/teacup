@@ -67,5 +67,5 @@ async fn generate_machine_id() -> i64 {
 }
 
 pub fn get_env_var_or_panic(env_name: &str) -> String {
-    env::var(env_name).expect(format!("{} env var is not set", env_name).as_str())
+    env::var(env_name).unwrap_or_else(|_| panic!("{} env var is not set", env_name))
 }

@@ -9,30 +9,23 @@ pub trait ToEvent {
     fn to_change_event(&self, event_type: EventType) -> ChangeEvent;
 }
 
-impl ToEvent for NetworkDevice {
-    fn to_change_event(&self, event_type: EventType) -> ChangeEvent {
-        ChangeEvent {
-            event_type: event_type.into(),
-            event: Some(change_event::Event::NetworkDevice(self.clone())),
+macro_rules! impl_to_event {
+    ($a: tt) => {
+        impl ToEvent for $a {
+            fn to_change_event(&self, event_type: EventType) -> ChangeEvent {
+                ChangeEvent {
+                    event_type: event_type.into(),
+                    event: Some(change_event::Event::$a(self.clone())),
+                }
+            }
         }
-    }
+    };
 }
 
-impl ToEvent for Mount {
-    fn to_change_event(&self, event_type: EventType) -> ChangeEvent {
-        ChangeEvent {
-            event_type: event_type.into(),
-            event: Some(change_event::Event::Mount(self.clone())),
-        }
-    }
-}
+impl_to_event!(NetworkDevice);
+impl_to_event!(Mount);
 
 impl Eq for NetworkDevice {}
-impl Hash for NetworkDevice {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-    }
-}
 
 // As we cannot apply the deconstruction Macro on protobuf
 // entities since they are automatically generated, we do

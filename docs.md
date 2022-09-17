@@ -26,6 +26,7 @@ General:
   - [ ] Refactor side-effects to beginning of program
   - [ ] Add tests for individual parts
 - [ ] Logging framework
+  - [ ] Remove debug printing
 - [ ] Refactoring
   - [x] Put code into own crates
   - [ ] Reorganize code
@@ -53,3 +54,23 @@ General:
     - no bidir streaming since keeping many different connections open is
       definitely worse than performing a handshake every X minutes
 - Try eBPF for measurements if possible?
+
+## Unhappy 😢
+
+- Generally:
+  - Use more generics to handle conversions and other interfaces
+- `protocol` package
+  - Uses `sqlx` to modify types but this should happen in `server`
+    where `database.rs` is located
+  - Manually implementing `sqlx` trait `FromRow` for protobuf classes
+- `tc_core`
+  - `u64_to_i64` is a silly hotfix and could be done nicer
+  - Could be ripped apart into respective parts
+- `client`
+  - Code structure has grown too complex over time (could be simpler)
+  - Spawning tasks is a bit hidden and should be more explicit
+  - Clean up tasks in a nicer way
+  - Error handling is not clean
+- `server`
+  - Revamp function calls to generics if reasonable
+  - Rip apart long match
