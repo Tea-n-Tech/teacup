@@ -1,6 +1,3 @@
-#![allow(unreachable_pub)]
-#![allow(missing_docs)]
-
 use std::hash::Hash;
 
 tonic::include_proto!("change_events");

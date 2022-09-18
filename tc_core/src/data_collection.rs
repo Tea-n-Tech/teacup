@@ -246,7 +246,7 @@ async fn get_disk_info(
 ) -> Result<HashMap<String, proto::Mount>, std::io::Error> {
     // We are only interested in the most common fs types.
     // I hope I don't exclude anything important 🫣
-    const ALLOWED_MOUNT_TYPES: &[&str] = &["ext", "ntfs", "vfat", "btrfs"];
+    const ALLOWED_MOUNT_TYPES: &[&str] = &["ext", "ntfs", "vfat", "btrfs", "xfs"];
 
     match sys.mounts() {
         Ok(mounts) => {

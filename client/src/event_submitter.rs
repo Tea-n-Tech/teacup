@@ -92,7 +92,7 @@ impl EventSubmitter {
         let initial_state_result = self
             .client
             .initial_state(tonic::Request::new(
-                get_initial_state(self.machine_id.clone()).await,
+                get_initial_state(self.machine_id).await,
             ))
             .await;
         if let Err(err) = &initial_state_result {
@@ -104,7 +104,7 @@ impl EventSubmitter {
         eprintln!("Got initial state: {:?}", initial_state);
 
         // collect data indefinitely and send data to the channel
-        let machine_id_clone = self.machine_id.clone();
+        let machine_id_clone = self.machine_id;
         self.submission_handler = Some(tokio::task::spawn(async move {
             tc_core::collect_events(tx, initial_state, machine_id_clone).await;
         }));
